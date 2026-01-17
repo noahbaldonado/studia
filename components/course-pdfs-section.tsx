@@ -17,15 +17,15 @@ export function CoursePdfsSection({ courseId }: CoursePdfsSectionProps) {
 
   return (
     <div className="mt-8">
-      <h2 className="text-xl font-bold mb-4">PDF del Corso</h2>
+      <h2 className="text-xl font-bold mb-4">Course PDFs</h2>
       
       <div className="mb-8">
-        <h3 className="text-lg font-semibold mb-4">Carica PDF</h3>
+        <h3 className="text-lg font-semibold mb-4">Upload PDF</h3>
         <PdfUpload courseId={courseId} onUploadSuccess={handleUploadSuccess} />
       </div>
 
       <div>
-        <h3 className="text-lg font-semibold mb-4">PDF Caricati</h3>
+        <h3 className="text-lg font-semibold mb-4">Uploaded PDFs</h3>
         <PdfList key={refreshKey} courseId={courseId} />
       </div>
     </div>

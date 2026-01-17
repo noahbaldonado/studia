@@ -13,7 +13,7 @@ export default async function Home() {
   return (
     <main className="flex min-h-screen items-center justify-center bg-white text-black">
       <div className="flex flex-col items-center gap-4">
-        <h1 className="text-2xl font-bold">Benvenuto</h1>
+        <h1 className="text-2xl font-bold">Welcome</h1>
         <GoogleSignInButton />
       </div>
     </main>

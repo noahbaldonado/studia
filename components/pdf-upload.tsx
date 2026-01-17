@@ -35,7 +35,7 @@ export function PdfUpload({ courseId, onUploadSuccess }: PdfUploadProps) {
     if (pdfFiles.length > 0) {
       handleFileUpload(pdfFiles[0]);
     } else {
-      setUploadError("Per favore carica solo file PDF");
+      setUploadError("Please upload PDF files only");
     }
   };
 
@@ -46,7 +46,7 @@ export function PdfUpload({ courseId, onUploadSuccess }: PdfUploadProps) {
       if (file.type === "application/pdf") {
         handleFileUpload(file);
       } else {
-        setUploadError("Per favore carica solo file PDF");
+        setUploadError("Please upload PDF files only");
       }
     }
   };
@@ -67,7 +67,7 @@ export function PdfUpload({ courseId, onUploadSuccess }: PdfUploadProps) {
 
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.error || "Errore durante l'upload");
+        throw new Error(error.error || "Error during upload");
       }
 
       onUploadSuccess();
@@ -76,7 +76,7 @@ export function PdfUpload({ courseId, onUploadSuccess }: PdfUploadProps) {
       }
     } catch (error) {
       setUploadError(
-        error instanceof Error ? error.message : "Errore durante l'upload"
+        error instanceof Error ? error.message : "Error during upload"
       );
     } finally {
       setIsUploading(false);
@@ -106,7 +106,7 @@ export function PdfUpload({ courseId, onUploadSuccess }: PdfUploadProps) {
 
         <FileText className="h-12 w-12 mx-auto mb-4 text-zinc-400" />
         <p className="text-sm text-zinc-600 mb-4">
-          Trascina un PDF qui oppure
+          Drag a PDF here or
         </p>
         <Button
           onClick={() => fileInputRef.current?.click()}
@@ -115,10 +115,10 @@ export function PdfUpload({ courseId, onUploadSuccess }: PdfUploadProps) {
           className="mb-2"
         >
           <Upload className="h-4 w-4 mr-2" />
-          {isUploading ? "Caricamento..." : "Carica PDF"}
+          {isUploading ? "Uploading..." : "Upload PDF"}
         </Button>
         <p className="text-xs text-zinc-500 mt-2">
-          Solo file PDF sono supportati
+          Only PDF files are supported
         </p>
       </div>
 

@@ -36,11 +36,11 @@ export function PdfList({ courseId }: PdfListProps) {
 
       if (fetchError) {
         console.error("Error fetching PDFs:", fetchError);
-        // Se la tabella non esiste, mostra un messaggio più utile
+        // If table doesn't exist, show a more helpful message
         if (fetchError.code === "42P01" || fetchError.message?.includes("does not exist")) {
-          setError("La tabella course_pdfs non esiste. Esegui lo script SQL per crearla.");
+          setError("The course_pdfs table does not exist. Run the SQL script to create it.");
         } else {
-          setError(`Errore nel caricamento dei PDF: ${fetchError.message || "Errore sconosciuto"}`);
+          setError(`Error loading PDFs: ${fetchError.message || "Unknown error"}`);
         }
         setPdfs([]);
         return;
@@ -48,7 +48,7 @@ export function PdfList({ courseId }: PdfListProps) {
       setPdfs(data || []);
     } catch (err) {
       console.error("Unexpected error fetching PDFs:", err);
-      setError("Errore nel caricamento dei PDF");
+      setError("Error loading PDFs");
       setPdfs([]);
     } finally {
       setLoading(false);
@@ -76,13 +76,13 @@ export function PdfList({ courseId }: PdfListProps) {
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
     } catch (err) {
-      console.error("Errore nel download:", err);
-      alert("Errore nel download del file");
+      console.error("Download error:", err);
+      alert("Error downloading file");
     }
   };
 
   const handleDelete = async (pdfId: string, filePath: string) => {
-    if (!confirm("Sei sicuro di voler eliminare questo PDF?")) return;
+    if (!confirm("Are you sure you want to delete this PDF?")) return;
 
     try {
       setDeletingId(pdfId);
@@ -104,8 +104,8 @@ export function PdfList({ courseId }: PdfListProps) {
 
       setPdfs(pdfs.filter((pdf) => pdf.id !== pdfId));
     } catch (err) {
-      console.error("Errore nell'eliminazione:", err);
-      alert("Errore nell'eliminazione del file");
+      console.error("Delete error:", err);
+      alert("Error deleting file");
     } finally {
       setDeletingId(null);
     }
@@ -131,7 +131,7 @@ export function PdfList({ courseId }: PdfListProps) {
     return (
       <div className="text-center py-8 text-zinc-500">
         <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
-        <p>Nessun PDF caricato ancora</p>
+        <p>No PDFs uploaded yet</p>
       </div>
     );
   }
@@ -150,7 +150,7 @@ export function PdfList({ courseId }: PdfListProps) {
                 {pdf.name}
               </p>
               <p className="text-xs text-zinc-500">
-                {new Date(pdf.created_at).toLocaleDateString("it-IT")}
+                {new Date(pdf.created_at).toLocaleDateString("en-US")}
               </p>
             </div>
           </div>
@@ -166,7 +166,7 @@ export function PdfList({ courseId }: PdfListProps) {
               onClick={() => handleDelete(pdf.id, pdf.file_path)}
               disabled={deletingId === pdf.id}
               className="p-2 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-              aria-label="Elimina"
+              aria-label="Delete"
             >
               {deletingId === pdf.id ? (
                 <Loader2 className="h-4 w-4 text-red-600 animate-spin" />

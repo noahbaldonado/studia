@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     } = await supabase.auth.getUser();
 
     if (authError || !user) {
-      return NextResponse.json({ error: "Non autorizzato" }, { status: 401 });
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const formData = await request.formData();
@@ -21,14 +21,14 @@ export async function POST(request: NextRequest) {
 
     if (!file || !courseId) {
       return NextResponse.json(
-        { error: "File e courseId sono richiesti" },
+        { error: "File and courseId are required" },
         { status: 400 }
       );
     }
 
     if (file.type !== "application/pdf") {
       return NextResponse.json(
-        { error: "Solo file PDF sono supportati" },
+        { error: "Only PDF files are supported" },
         { status: 400 }
       );
     }
@@ -51,12 +51,12 @@ export async function POST(request: NextRequest) {
       // Check if bucket doesn't exist
       if (uploadError.message?.includes("Bucket not found") || uploadError.message?.includes("The resource was not found")) {
         return NextResponse.json(
-          { error: "Il bucket 'course-pdfs' non esiste. Crea il bucket in Supabase Storage." },
+          { error: "The 'course-pdfs' bucket does not exist. Create the bucket in Supabase Storage." },
           { status: 500 }
         );
       }
       return NextResponse.json(
-        { error: `Errore durante l'upload del file: ${uploadError.message || "Errore sconosciuto"}` },
+        { error: `Error uploading file: ${uploadError.message || "Unknown error"}` },
         { status: 500 }
       );
     }
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
       await supabase.storage.from("course-pdfs").remove([filePath]);
       console.error("Database insert error:", dbError);
       return NextResponse.json(
-        { error: "Errore nel salvataggio dei metadati" },
+        { error: "Error saving metadata" },
         { status: 500 }
       );
     }
@@ -90,7 +90,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error("Upload error:", error);
     return NextResponse.json(
-      { error: "Errore interno del server" },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
