@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { CoursePdfsSection } from "@/components/course-pdfs-section";
+import { SubscribeButton } from "@/components/subscribe-button";
 
 export default async function CourseDetailPage({
   params,
@@ -9,6 +10,12 @@ export default async function CourseDetailPage({
 }) {
   const supabase = await createClient();
   const { id } = await params;
+
+  // Get user
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) {
+    return redirect("/");
+  }
 
   // Fetch the specific course
   const { data: course, error } = await supabase
@@ -25,6 +32,10 @@ export default async function CourseDetailPage({
     <div className="px-4 py-6 pb-24">
       <h1 className="text-2xl font-bold mb-2">{course.name}</h1>
       <p className="text-zinc-500 mb-6">{course.subject}</p>
+      
+      <div className="mb-6">
+        <SubscribeButton courseId={id} userId={user.id} />
+      </div>
       
       {course.course_link && (
         <a

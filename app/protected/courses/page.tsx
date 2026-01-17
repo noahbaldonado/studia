@@ -13,57 +13,144 @@ interface Course {
   name: string;
   subject: string;
   course_link?: string;
+  isSubscribed?: boolean;
 }
 
 export default function CoursesPage() {
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [filteredCourses, setFilteredCourses] = useState<Course[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [allCourses, setAllCourses] = useState<Course[]>([]);
+  const [subscribedCourseIds, setSubscribedCourseIds] = useState<Set<string>>(new Set());
+  const [userId, setUserId] = useState<string | null>(null);
 
   const supabase = createClient();
 
-  // Fetch all courses for search autocomplete (in batches to handle Supabase 1000 row limit)
+  // Get user ID and fetch subscriptions in parallel
+  useEffect(() => {
+    async function getUserAndSubscriptions() {
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        setUserId(user.id);
+        
+        // Fetch subscriptions immediately after getting user
+        try {
+          const { data, error } = await supabase
+            .from("course_subscription")
+            .select("course_id")
+            .eq("user_id", user.id);
+
+          if (error) {
+            console.error("Error fetching subscriptions:", error);
+            setSubscribedCourseIds(new Set());
+          } else if (data) {
+            const subscribedIds = new Set(data.map((sub) => sub.course_id));
+            setSubscribedCourseIds(subscribedIds);
+          } else {
+            setSubscribedCourseIds(new Set());
+          }
+        } catch (err) {
+          console.error("Error fetching subscriptions:", err);
+          setSubscribedCourseIds(new Set());
+        }
+      } else {
+        setSubscribedCourseIds(new Set());
+      }
+    }
+
+    getUserAndSubscriptions();
+
+    // Refetch subscriptions when window gains focus (user navigates back)
+    const handleFocus = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        try {
+          const { data, error } = await supabase
+            .from("course_subscription")
+            .select("course_id")
+            .eq("user_id", user.id);
+
+          if (!error && data) {
+            const subscribedIds = new Set(data.map((sub) => sub.course_id));
+            setSubscribedCourseIds(subscribedIds);
+          }
+        } catch (err) {
+          console.error("Error refetching subscriptions:", err);
+        }
+      }
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => {
+      window.removeEventListener("focus", handleFocus);
+    };
+  }, [supabase]);
+
+  // Fetch courses progressively - load first batch quickly, then load rest in background
   useEffect(() => {
     async function fetchAllCourses() {
       try {
         setLoading(true);
         const allCoursesData: Course[] = [];
         const BATCH_SIZE = 1000;
+        const INITIAL_BATCH_SIZE = 100; // Load first 100 immediately for fast initial render
         let from = 0;
         let hasMore = true;
 
-        while (hasMore) {
-          const { data, error: fetchError } = await supabase
-            .from("course")
-            .select("id, name, subject, course_link")
-            .order("name")
-            .range(from, from + BATCH_SIZE - 1);
+        // Load first batch quickly to show initial results
+        const { data: firstBatch, error: firstError } = await supabase
+          .from("course")
+          .select("id, name, subject, course_link")
+          .order("name")
+          .limit(INITIAL_BATCH_SIZE);
 
-          if (fetchError) {
-            setError(fetchError.message);
-            console.error("Error fetching courses:", fetchError);
-            break;
-          }
-
-          if (data && data.length > 0) {
-            allCoursesData.push(...data);
-            from += BATCH_SIZE;
-            hasMore = data.length === BATCH_SIZE; // If we got less than BATCH_SIZE, we're done
-          } else {
-            hasMore = false;
-          }
+        if (firstError) {
+          setError(firstError.message);
+          console.error("Error fetching courses:", firstError);
+          setLoading(false);
+          return;
         }
 
-        setAllCourses(allCoursesData);
-        setCourses(allCoursesData);
+        if (firstBatch && firstBatch.length > 0) {
+          allCoursesData.push(...firstBatch);
+          setAllCourses([...allCoursesData]); // Show first batch immediately
+          setLoading(false); // Allow rendering to start
+
+          // Continue loading rest in background if there might be more
+          if (firstBatch.length === INITIAL_BATCH_SIZE) {
+            from = INITIAL_BATCH_SIZE;
+
+            // Load remaining batches in background
+            while (hasMore) {
+              const { data, error: fetchError } = await supabase
+                .from("course")
+                .select("id, name, subject, course_link")
+                .order("name")
+                .range(from, from + BATCH_SIZE - 1);
+
+              if (fetchError) {
+                console.error("Error fetching remaining courses:", fetchError);
+                break;
+              }
+
+              if (data && data.length > 0) {
+                allCoursesData.push(...data);
+                setAllCourses([...allCoursesData]); // Update as we load more
+                from += BATCH_SIZE;
+                hasMore = data.length === BATCH_SIZE;
+              } else {
+                hasMore = false;
+              }
+            }
+          }
+        } else {
+          setAllCourses([]);
+        }
       } catch (err) {
         setError("Failed to load courses");
         console.error(err);
-      } finally {
         setLoading(false);
       }
     }
@@ -71,23 +158,57 @@ export default function CoursesPage() {
     fetchAllCourses();
   }, [supabase]);
 
-  // Filter courses based on search query
-  useEffect(() => {
+  // Compute sorted courses with subscription status (memoized for performance)
+  const courses = useMemo(() => {
+    if (allCourses.length === 0) return [];
+
+    const coursesWithSubscription = allCourses.map((course) => ({
+      ...course,
+      isSubscribed: subscribedCourseIds.has(course.id),
+    }));
+
+    // Sort: subscribed first, then alphabetically
+    coursesWithSubscription.sort((a, b) => {
+      if (a.isSubscribed && !b.isSubscribed) return -1;
+      if (!a.isSubscribed && b.isSubscribed) return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    return coursesWithSubscription;
+  }, [allCourses, subscribedCourseIds]);
+
+  // Filter courses based on search query (memoized for performance)
+  const filteredCourses = useMemo(() => {
     if (!searchQuery.trim()) {
-      setFilteredCourses(courses);
-      setCurrentPage(1);
-      return;
+      // Return sorted courses (same as `courses` but computed directly to avoid dependency)
+      return courses;
     }
 
     const query = searchQuery.toLowerCase();
-    const filtered = allCourses.filter(
-      (course) =>
-        course.name.toLowerCase().includes(query) ||
-        course.subject.toLowerCase().includes(query)
-    );
-    setFilteredCourses(filtered);
+    const filtered = allCourses
+      .map((course) => ({
+        ...course,
+        isSubscribed: subscribedCourseIds.has(course.id),
+      }))
+      .filter(
+        (course) =>
+          course.name.toLowerCase().includes(query) ||
+          course.subject.toLowerCase().includes(query)
+      )
+      // Maintain sort: subscribed first, then alphabetically
+      .sort((a, b) => {
+        if (a.isSubscribed && !b.isSubscribed) return -1;
+        if (!a.isSubscribed && b.isSubscribed) return 1;
+        return a.name.localeCompare(b.name);
+      });
+    
+    return filtered;
+  }, [searchQuery, courses, allCourses, subscribedCourseIds]);
+
+  // Reset to page 1 when search query changes
+  useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, allCourses, courses]);
+  }, [searchQuery]);
 
   // Get autocomplete suggestions (top 5 matches)
   const suggestions = useMemo(() => {
