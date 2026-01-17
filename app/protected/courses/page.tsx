@@ -26,24 +26,40 @@ export default function CoursesPage() {
 
   const supabase = createClient();
 
-  // Fetch all courses for search autocomplete
+  // Fetch all courses for search autocomplete (in batches to handle Supabase 1000 row limit)
   useEffect(() => {
-    async function fetchCourses() {
+    async function fetchAllCourses() {
       try {
         setLoading(true);
-        const { data, error: fetchError } = await supabase
-          .from("course")
-          .select("id, name, subject, course_link")
-          .order("name")
-          .limit(10000); // Get all for search
+        const allCoursesData: Course[] = [];
+        const BATCH_SIZE = 1000;
+        let from = 0;
+        let hasMore = true;
 
-        if (fetchError) {
-          setError(fetchError.message);
-          console.error("Error fetching courses:", fetchError);
-        } else {
-          setAllCourses(data || []);
-          setCourses(data || []);
+        while (hasMore) {
+          const { data, error: fetchError } = await supabase
+            .from("course")
+            .select("id, name, subject, course_link")
+            .order("name")
+            .range(from, from + BATCH_SIZE - 1);
+
+          if (fetchError) {
+            setError(fetchError.message);
+            console.error("Error fetching courses:", fetchError);
+            break;
+          }
+
+          if (data && data.length > 0) {
+            allCoursesData.push(...data);
+            from += BATCH_SIZE;
+            hasMore = data.length === BATCH_SIZE; // If we got less than BATCH_SIZE, we're done
+          } else {
+            hasMore = false;
+          }
         }
+
+        setAllCourses(allCoursesData);
+        setCourses(allCoursesData);
       } catch (err) {
         setError("Failed to load courses");
         console.error(err);
@@ -52,7 +68,7 @@ export default function CoursesPage() {
       }
     }
 
-    fetchCourses();
+    fetchAllCourses();
   }, [supabase]);
 
   // Filter courses based on search query
