@@ -1,6 +1,5 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
-import { LogoutButton } from "@/components/logout-button";
 
 export default async function ProtectedPage() {
   const supabase = await createClient();
@@ -11,11 +10,8 @@ export default async function ProtectedPage() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen gap-4">
-      <h1 className="text-3xl font-bold">Hello World</h1>
-      <p>Hello: {user.email}</p>
-      
-      <LogoutButton /> 
+    <div className="px-4 py-6">
+      <h1 className="text-2xl font-bold">Feed</h1>
     </div>
   );
 }
