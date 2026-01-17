@@ -13,7 +13,7 @@ export default async function ProtectedPage() {
   return (
     <div className="flex flex-col items-center justify-center min-h-screen gap-4">
       <h1 className="text-3xl font-bold">Hello World</h1>
-      <p>Sei loggato come: {user.email}</p>
+      <p>Hello: {user.email}</p>
       
       <LogoutButton /> 
     </div>
