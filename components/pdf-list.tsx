@@ -1,0 +1,182 @@
+"use client";
+
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { FileText, Download, Trash2, Loader2 } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
+
+interface PdfFile {
+  id: string;
+  name: string;
+  file_path: string;
+  course_id: string;
+  created_at: string;
+}
+
+interface PdfListProps {
+  courseId: string;
+}
+
+export function PdfList({ courseId }: PdfListProps) {
+  const [pdfs, setPdfs] = useState<PdfFile[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const supabase = useMemo(() => createClient(), []);
+
+  const fetchPdfs = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const { data, error: fetchError } = await supabase
+        .from("course_pdfs")
+        .select("*")
+        .eq("course_id", courseId)
+        .order("created_at", { ascending: false });
+
+      if (fetchError) {
+        console.error("Error fetching PDFs:", fetchError);
+        // Se la tabella non esiste, mostra un messaggio più utile
+        if (fetchError.code === "42P01" || fetchError.message?.includes("does not exist")) {
+          setError("La tabella course_pdfs non esiste. Esegui lo script SQL per crearla.");
+        } else {
+          setError(`Errore nel caricamento dei PDF: ${fetchError.message || "Errore sconosciuto"}`);
+        }
+        setPdfs([]);
+        return;
+      }
+      setPdfs(data || []);
+    } catch (err) {
+      console.error("Unexpected error fetching PDFs:", err);
+      setError("Errore nel caricamento dei PDF");
+      setPdfs([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [courseId, supabase]);
+
+  useEffect(() => {
+    fetchPdfs();
+  }, [fetchPdfs]);
+
+  const handleDownload = async (pdf: PdfFile) => {
+    try {
+      const { data, error: downloadError } = await supabase.storage
+        .from("course-pdfs")
+        .download(pdf.file_path);
+
+      if (downloadError) throw downloadError;
+
+      const url = URL.createObjectURL(data);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = pdf.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Errore nel download:", err);
+      alert("Errore nel download del file");
+    }
+  };
+
+  const handleDelete = async (pdfId: string, filePath: string) => {
+    if (!confirm("Sei sicuro di voler eliminare questo PDF?")) return;
+
+    try {
+      setDeletingId(pdfId);
+
+      // Delete from storage
+      const { error: storageError } = await supabase.storage
+        .from("course-pdfs")
+        .remove([filePath]);
+
+      if (storageError) throw storageError;
+
+      // Delete from database
+      const { error: dbError } = await supabase
+        .from("course_pdfs")
+        .delete()
+        .eq("id", pdfId);
+
+      if (dbError) throw dbError;
+
+      setPdfs(pdfs.filter((pdf) => pdf.id !== pdfId));
+    } catch (err) {
+      console.error("Errore nell'eliminazione:", err);
+      alert("Errore nell'eliminazione del file");
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+        <p className="text-sm text-red-600">{error}</p>
+      </div>
+    );
+  }
+
+  if (pdfs.length === 0) {
+    return (
+      <div className="text-center py-8 text-zinc-500">
+        <FileText className="h-12 w-12 mx-auto mb-2 opacity-50" />
+        <p>Nessun PDF caricato ancora</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      {pdfs.map((pdf) => (
+        <div
+          key={pdf.id}
+          className="flex items-center justify-between p-4 border border-zinc-200 rounded-lg hover:bg-zinc-50 transition-colors"
+        >
+          <div className="flex items-center gap-3 flex-1 min-w-0">
+            <FileText className="h-5 w-5 text-blue-600 flex-shrink-0" />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-zinc-900 truncate">
+                {pdf.name}
+              </p>
+              <p className="text-xs text-zinc-500">
+                {new Date(pdf.created_at).toLocaleDateString("it-IT")}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <button
+              onClick={() => handleDownload(pdf)}
+              className="p-2 hover:bg-zinc-100 rounded-lg transition-colors"
+              aria-label="Download"
+            >
+              <Download className="h-4 w-4 text-zinc-600" />
+            </button>
+            <button
+              onClick={() => handleDelete(pdf.id, pdf.file_path)}
+              disabled={deletingId === pdf.id}
+              className="p-2 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+              aria-label="Elimina"
+            >
+              {deletingId === pdf.id ? (
+                <Loader2 className="h-4 w-4 text-red-600 animate-spin" />
+              ) : (
+                <Trash2 className="h-4 w-4 text-red-600" />
+              )}
+            </button>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
