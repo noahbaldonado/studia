@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import Link from "next/link";
 
 interface User {
   id: string;
@@ -72,19 +73,22 @@ export function FollowList({ userId, type }: FollowListProps) {
           : "";
 
         return (
-          <div
+          <Link
             key={user.id}
-            className="flex items-center justify-between py-2 px-3 rounded-lg border border-zinc-200 hover:bg-zinc-50 transition-colors"
+            href={`/protected/profile/${user.id}`}
+            className="block"
           >
-            <div className="flex-1">
-              <div className="font-medium text-zinc-900">{user.name}</div>
-              {emailDisplay && (
-                <div className="text-xs text-zinc-500 mt-0.5">
-                  {emailDisplay}@ucsc.edu
-                </div>
-              )}
+            <div className="flex items-center justify-between py-2 px-3 rounded-lg border border-zinc-200 hover:bg-zinc-50 hover:border-zinc-300 transition-colors cursor-pointer">
+              <div className="flex-1">
+                <div className="font-medium text-zinc-900">{user.name}</div>
+                {emailDisplay && (
+                  <div className="text-xs text-zinc-500 mt-0.5">
+                    {emailDisplay}@ucsc.edu
+                  </div>
+                )}
+              </div>
             </div>
-          </div>
+          </Link>
         );
       })}
     </div>

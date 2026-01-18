@@ -1,35 +1,46 @@
 import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
-import { LogoutButton } from "@/components/logout-button";
-import { MyMaterial } from "@/components/my-material";
+import { redirect, notFound } from "next/navigation";
 import { FollowList } from "@/components/follow-list";
 import { UserSubscribedCourses } from "@/components/user-subscribed-courses";
 
-export default async function UserProfilePage() {
+export default async function OtherUserProfilePage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
   const supabase = await createClient();
+  const { id } = await params;
 
-  const { data: { user }, error } = await supabase.auth.getUser();
-
-  if (error || !user) {
+  // Get current user
+  const { data: { user: currentUser }, error: currentUserError } = await supabase.auth.getUser();
+  if (currentUserError || !currentUser) {
     return redirect("/");
   }
 
-  // Get profile data to fetch actual rating
+  // If viewing own profile, redirect to main profile page
+  if (id === currentUser.id) {
+    return redirect("/protected/profile");
+  }
+
+  // Get profile data for the user
   const { data: profile, error: profileError } = await supabase
     .from("profile")
-    .select("rating, metadata")
-    .eq("id", user.id)
+    .select("id, rating, metadata")
+    .eq("id", id)
     .single();
 
-  const metadata = profile?.metadata as any;
-  const displayName = metadata?.name || user.user_metadata?.full_name || "Profile";
-  const userRating = profile?.rating || 7.5;
+  if (profileError || !profile) {
+    return notFound();
+  }
+
+  const metadata = profile.metadata as any;
+  const displayName = metadata?.name || `User ${id.substring(0, 8)}`;
+  const userRating = profile.rating || 7.5;
 
   return (
     <div className="px-4 py-6 pb-24">
       <header className="flex justify-between items-center border-b pb-4 mb-6">
-        <h1 className="text-2xl font-bold">{displayName || "Profile"}</h1>
-        <LogoutButton />
+        <h1 className="text-2xl font-bold">{displayName}</h1>
       </header>
 
       {/* User Rating Section */}
@@ -60,7 +71,7 @@ export default async function UserProfilePage() {
       {/* Subscribed Courses Section */}
       <section className="mb-8">
         <h2 className="text-xl font-bold mb-4">Subscribed Courses</h2>
-        <UserSubscribedCourses userId={user.id} />
+        <UserSubscribedCourses userId={id} />
       </section>
 
       {/* Following and Followers Section */}
@@ -68,19 +79,13 @@ export default async function UserProfilePage() {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <h2 className="text-lg font-bold mb-3">Following</h2>
-            <FollowList userId={user.id} type="following" />
+            <FollowList userId={id} type="following" />
           </div>
           <div>
             <h2 className="text-lg font-bold mb-3">Followers</h2>
-            <FollowList userId={user.id} type="followers" />
+            <FollowList userId={id} type="followers" />
           </div>
         </div>
-      </section>
-
-      {/* My Material Section */}
-      <section className="mt-8">
-        <h2 className="text-xl font-bold mb-4">My Material</h2>
-        <MyMaterial userId={user.id} />
       </section>
     </div>
   );
