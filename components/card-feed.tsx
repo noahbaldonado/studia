@@ -627,30 +627,30 @@ export function CardFeed() {
         onMouseLeave={onMouseUp}
       >
         {cardData.type === "quiz" ? (
-        <div className="bg-white rounded-2xl shadow-xl p-6 border-2 border-gray-200">
+        <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-xl p-6 border-2 border-blue-200">
           <div className="flex items-center gap-2 mb-4">
-            <h2 className="text-xl font-bold flex-1">{cardData.title}</h2>
+            <h2 className="text-xl font-bold flex-1 text-blue-900">{cardData.title}</h2>
             {currentCard.is_like === true && (
-              <Heart className="w-5 h-5 text-red-500 fill-red-500" />
+              <Heart className="w-5 h-5 text-blue-600 fill-blue-600" />
             )}
             {currentCard.is_like === false && (
-              <HeartOff className="w-5 h-5 text-gray-500" />
+              <HeartOff className="w-5 h-5 text-blue-300" />
             )}
           </div>
           <div className="mb-6">
-            <p className="text-gray-700 mb-4">{cardData.content.question}</p>
+            <p className="text-blue-800 mb-4">{cardData.content.question}</p>
             <div className="space-y-2">
               {cardData.content.options.map((option, index) => {
                 const isSelected = selectedAnswer === index;
                 const isCorrect = index === cardData.content.correct_answer;
                 const showResult = selectedAnswer !== null;
 
-                let bgColor = "bg-gray-100 hover:bg-gray-200";
+                let bgColor = "bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200";
                 if (showResult) {
                   if (isCorrect) {
-                    bgColor = "bg-green-500 text-white";
+                    bgColor = "bg-blue-600 text-white border-blue-700";
                   } else if (isSelected && !isCorrect) {
-                    bgColor = "bg-red-500 text-white";
+                    bgColor = "bg-blue-300 text-white border-blue-400";
                   }
                 }
 
@@ -680,7 +680,7 @@ export function CardFeed() {
           {/* Comments section */}
           <QuizComments key={currentCard.id} quizId={currentCard.id} />
 
-          <div className="mt-6 pt-4 border-t">
+          <div className="mt-6 pt-4 border-t border-blue-200">
             <Link
               href={`/protected/courses/${currentCard.course_id}`}
               className="text-blue-600 hover:text-blue-800 font-semibold text-sm inline-flex items-center gap-1"
@@ -692,26 +692,26 @@ export function CardFeed() {
         </div>
       ) : cardData.type === "sticky_note" ? (
         <div
-          className="bg-[#FEF08A] rounded-2xl shadow-xl p-6 border-2 border-yellow-300"
+          className="bg-gradient-to-br from-blue-50 via-white to-blue-100 rounded-2xl shadow-xl p-6 border-2 border-blue-300"
           style={{ minHeight: "400px" }}
         >
           <div className="flex items-center gap-2 mb-4">
-            <h2 className="text-xl font-bold flex-1">{cardData.title}</h2>
+            <h2 className="text-xl font-bold flex-1 text-blue-900">{cardData.title}</h2>
             {currentCard.is_like === true && (
-              <Heart className="w-5 h-5 text-red-500 fill-red-500" />
+              <Heart className="w-5 h-5 text-blue-600 fill-blue-600" />
             )}
             {currentCard.is_like === false && (
-              <HeartOff className="w-5 h-5 text-gray-500" />
+              <HeartOff className="w-5 h-5 text-blue-300" />
             )}
           </div>
-          <p className="text-gray-800 whitespace-pre-wrap mb-6">
+          <p className="text-blue-800 whitespace-pre-wrap mb-6">
             {cardData.content}
           </p>
 
           {/* Comments section */}
           <QuizComments key={currentCard.id} quizId={currentCard.id} />
 
-          <div className="mt-6 pt-4 border-t border-yellow-400">
+          <div className="mt-6 pt-4 border-t border-blue-300">
             <Link
               href={`/protected/courses/${currentCard.course_id}`}
               className="text-blue-600 hover:text-blue-800 font-semibold text-sm inline-flex items-center gap-1"
@@ -722,14 +722,14 @@ export function CardFeed() {
           </div>
         </div>
       ) : cardData.type === "flashcard" ? (
-        <div className="bg-white rounded-2xl shadow-xl p-6 border-2 border-gray-200">
+        <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-xl p-6 border-2 border-blue-200">
           <div className="flex items-center gap-2 mb-4">
             <div className="flex-1"></div>
             {currentCard.is_like === true && (
-              <Heart className="w-5 h-5 text-red-500 fill-red-500" />
+              <Heart className="w-5 h-5 text-blue-600 fill-blue-600" />
             )}
             {currentCard.is_like === false && (
-              <HeartOff className="w-5 h-5 text-gray-500" />
+              <HeartOff className="w-5 h-5 text-blue-300" />
             )}
           </div>
           <div 
@@ -756,9 +756,9 @@ export function CardFeed() {
                 }}
               >
                 <div className="flex flex-col items-center justify-center py-8">
-                  <p className="text-sm font-semibold text-gray-500 mb-4 uppercase tracking-wide">Question</p>
-                  <p className="text-xl text-gray-800 text-center leading-relaxed">{cardData.content.question}</p>
-                  <p className="text-xs text-gray-400 mt-6">Click to see the answer</p>
+                  <p className="text-sm font-semibold text-blue-500 mb-4 uppercase tracking-wide">Question</p>
+                  <p className="text-xl text-blue-900 text-center leading-relaxed">{cardData.content.question}</p>
+                  <p className="text-xs text-blue-400 mt-6">Click to see the answer</p>
                 </div>
               </div>
               
@@ -772,9 +772,9 @@ export function CardFeed() {
                 }}
               >
                 <div className="flex flex-col items-center justify-center py-8">
-                  <p className="text-sm font-semibold text-gray-500 mb-4 uppercase tracking-wide">Answer</p>
-                  <p className="text-xl text-gray-800 text-center leading-relaxed">{cardData.content.answer}</p>
-                  <p className="text-xs text-gray-400 mt-6">Click to return to the question</p>
+                  <p className="text-sm font-semibold text-blue-500 mb-4 uppercase tracking-wide">Answer</p>
+                  <p className="text-xl text-blue-900 text-center leading-relaxed">{cardData.content.answer}</p>
+                  <p className="text-xs text-blue-400 mt-6">Click to return to the question</p>
                 </div>
               </div>
             </div>
@@ -783,7 +783,7 @@ export function CardFeed() {
           {/* Comments section */}
           <QuizComments key={currentCard.id} quizId={currentCard.id} />
           
-          <div className="mt-6 pt-4 border-t">
+          <div className="mt-6 pt-4 border-t border-blue-200">
             <Link
               href={`/protected/courses/${currentCard.course_id}`}
               className="text-blue-600 hover:text-blue-800 font-semibold text-sm inline-flex items-center gap-1"
@@ -794,31 +794,31 @@ export function CardFeed() {
           </div>
         </div>
       ) : cardData.type === "open_question" ? (
-        <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl shadow-xl p-6 border-2 border-purple-200">
+        <div className="bg-gradient-to-br from-blue-50 via-white to-blue-100 rounded-2xl shadow-xl p-6 border-2 border-blue-200">
           <div className="flex items-center gap-2 mb-4">
             <div className="flex-1"></div>
             {currentCard.is_like === true && (
-              <Heart className="w-5 h-5 text-red-500 fill-red-500" />
+              <Heart className="w-5 h-5 text-blue-600 fill-blue-600" />
             )}
             {currentCard.is_like === false && (
-              <HeartOff className="w-5 h-5 text-gray-500" />
+              <HeartOff className="w-5 h-5 text-blue-300" />
             )}
           </div>
           <div className="mb-6">
-            <div className="bg-white rounded-lg p-4 mb-4 border border-purple-200">
-              <p className="text-lg font-semibold text-gray-800 mb-2">Question:</p>
-              <p className="text-gray-700">{cardData.content.question}</p>
+            <div className="bg-white rounded-lg p-4 mb-4 border border-blue-200">
+              <p className="text-lg font-semibold text-blue-900 mb-2">Question:</p>
+              <p className="text-blue-800">{cardData.content.question}</p>
             </div>
-            <div className="bg-purple-100 rounded-lg p-4 border border-purple-300">
-              <p className="text-lg font-semibold text-purple-900 mb-2">Answer:</p>
-              <p className="text-purple-800 whitespace-pre-wrap">{cardData.content.answer}</p>
+            <div className="bg-blue-100 rounded-lg p-4 border border-blue-300">
+              <p className="text-lg font-semibold text-blue-900 mb-2">Answer:</p>
+              <p className="text-blue-800 whitespace-pre-wrap">{cardData.content.answer}</p>
             </div>
           </div>
 
           {/* Comments section */}
           <QuizComments key={currentCard.id} quizId={currentCard.id} />
 
-          <div className="mt-6 pt-4 border-t border-purple-200">
+          <div className="mt-6 pt-4 border-t border-blue-200">
             <Link
               href={`/protected/courses/${currentCard.course_id}`}
               className="text-blue-600 hover:text-blue-800 font-semibold text-sm inline-flex items-center gap-1"
@@ -845,22 +845,22 @@ export function CardFeed() {
                 <div className="relative">
                   {/* Main heart with pulse animation */}
                   <Heart 
-                    className="w-20 h-20 text-red-500 fill-red-500 drop-shadow-2xl"
+                    className="w-20 h-20 text-blue-600 fill-blue-600 drop-shadow-2xl"
                     style={{
-                      filter: "drop-shadow(0 0 10px rgba(239, 68, 68, 0.5))"
+                      filter: "drop-shadow(0 0 10px rgba(37, 99, 235, 0.5))"
                     }}
                   />
                   {/* External glow effect */}
                   <div className="absolute inset-0 flex items-center justify-center -z-10">
                     <Heart 
-                      className="w-28 h-28 text-red-400 fill-red-400 opacity-30"
+                      className="w-28 h-28 text-blue-400 fill-blue-400 opacity-30"
                       style={{
                         animation: "ping 1s cubic-bezier(0, 0, 0.2, 1) infinite"
                       }}
                     />
                   </div>
                 </div>
-                <div className="bg-gradient-to-r from-red-500 to-pink-500 text-white px-6 py-2 rounded-full font-bold text-base shadow-lg">
+                <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-2 rounded-full font-bold text-base shadow-lg">
                   LIKE
                 </div>
               </div>
@@ -877,22 +877,22 @@ export function CardFeed() {
                 <div className="relative">
                   {/* Main broken heart */}
                   <HeartOff 
-                    className="w-20 h-20 text-gray-700 drop-shadow-2xl"
+                    className="w-20 h-20 text-blue-400 drop-shadow-2xl"
                     style={{
-                      filter: "drop-shadow(0 0 10px rgba(107, 114, 128, 0.5))"
+                      filter: "drop-shadow(0 0 10px rgba(96, 165, 250, 0.5))"
                     }}
                   />
                   {/* External glow effect */}
                   <div className="absolute inset-0 flex items-center justify-center -z-10">
                     <HeartOff 
-                      className="w-28 h-28 text-gray-500 opacity-30"
+                      className="w-28 h-28 text-blue-300 opacity-30"
                       style={{
                         animation: "ping 1s cubic-bezier(0, 0, 0.2, 1) infinite"
                       }}
                     />
                   </div>
                 </div>
-                <div className="bg-gradient-to-r from-gray-600 to-gray-700 text-white px-6 py-2 rounded-full font-bold text-base shadow-lg">
+                <div className="bg-gradient-to-r from-blue-300 to-blue-400 text-white px-6 py-2 rounded-full font-bold text-base shadow-lg">
                   DISLIKE
                 </div>
               </div>

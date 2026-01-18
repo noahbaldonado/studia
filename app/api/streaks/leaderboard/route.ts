@@ -31,27 +31,35 @@ export async function GET(request: NextRequest) {
       }
 
       const followingIds = (follows || []).map((f) => f.following_id);
+      
+      // Always include the current user in the friends leaderboard
+      const userIdsToFetch = [...new Set([...followingIds, user.id])];
 
-      if (followingIds.length === 0) {
+      if (userIdsToFetch.length === 0) {
         return NextResponse.json({ leaderboard: [] });
       }
 
-      // Get profiles of friends with daily streaks
+      // Get profiles of friends (including current user) with daily streaks
       const { data: profiles, error: profileError } = await supabase
         .from("profile")
         .select("id, metadata")
-        .in("id", followingIds);
+        .in("id", userIdsToFetch);
 
       if (profileError) {
         console.error("Error fetching profiles:", profileError);
         return NextResponse.json({ error: "Failed to fetch profiles" }, { status: 500 });
       }
 
-      // Build leaderboard from friends
+      // Build leaderboard from friends (including current user)
       const leaderboard = (profiles || [])
         .map((profile) => {
           const metadata = profile.metadata as any;
-          const streak = metadata?.current_streak || 0;
+          // Handle both number and string types for streak
+          const streak = typeof metadata?.current_streak === 'number' 
+            ? metadata.current_streak 
+            : typeof metadata?.current_streak === 'string'
+            ? parseInt(metadata.current_streak) || 0
+            : 0;
           return {
             id: profile.id,
             name: metadata?.name || `User ${profile.id.substring(0, 8)}`,
@@ -81,7 +89,12 @@ export async function GET(request: NextRequest) {
       const leaderboard = (profiles || [])
         .map((profile) => {
           const metadata = profile.metadata as any;
-          const streak = metadata?.current_streak || 0;
+          // Handle both number and string types for streak
+          const streak = typeof metadata?.current_streak === 'number' 
+            ? metadata.current_streak 
+            : typeof metadata?.current_streak === 'string'
+            ? parseInt(metadata.current_streak) || 0
+            : 0;
           return {
             id: profile.id,
             name: metadata?.name || `User ${profile.id.substring(0, 8)}`,

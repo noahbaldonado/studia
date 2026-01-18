@@ -110,6 +110,7 @@ export async function GET(request: NextRequest) {
               (commentLikes[c.id]?.dislikes || 0),
             userLike: commentLikes[c.id]?.userLike ?? null,
             replies: [] as any[],
+            userId: c.user_id, // Include user_id for ownership checks
           },
         ];
       }) || []

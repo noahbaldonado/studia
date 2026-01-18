@@ -186,7 +186,7 @@ export function PuzzleRush() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="text-lg">Loading quizzes...</div>
+        <div className="text-lg text-blue-600">Loading quizzes...</div>
       </div>
     );
   }
@@ -194,7 +194,7 @@ export function PuzzleRush() {
   if (quizzes.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-96 gap-4">
-        <div className="text-lg font-semibold">No quizzes available</div>
+        <div className="text-lg font-semibold text-blue-900">No quizzes available</div>
         <Button onClick={loadQuizzes}>Reload</Button>
       </div>
     );
@@ -203,14 +203,14 @@ export function PuzzleRush() {
   if (isFinished) {
     return (
       <div className="flex flex-col items-center justify-center h-96 gap-6 px-4">
-        <div className="text-3xl font-bold">Game Over!</div>
+        <div className="text-3xl font-bold text-blue-900">Game Over!</div>
         <div className="text-center">
-          <div className="text-2xl font-semibold mb-2">Score: {correctAnswers}</div>
-          <div className="text-lg text-zinc-600">
+          <div className="text-2xl font-semibold mb-2 text-blue-800">Score: {correctAnswers}</div>
+          <div className="text-lg text-blue-600">
             Wrong Answers: {wrongAnswers}/{MAX_WRONG_ANSWERS}
           </div>
         </div>
-        <Button onClick={startGame} className="text-lg px-8 py-6">
+        <Button onClick={startGame} className="rounded-full text-lg px-8 py-6">
           Play Again
         </Button>
       </div>
@@ -222,41 +222,48 @@ export function PuzzleRush() {
       {/* Header with timer and stats */}
       <div className="w-full max-w-md mb-6">
         <div className="flex justify-between items-center mb-4">
-          <div className="text-2xl font-bold">Puzzle Rush</div>
-          <div className={`text-xl font-bold ${timeRemaining <= 10 ? "text-red-600" : "text-zinc-900"}`}>
+          <div className="text-2xl font-bold text-blue-900">Puzzle Rush</div>
+          <div className={`text-xl font-bold ${timeRemaining <= 10 ? "text-blue-600" : "text-blue-900"}`}>
             {timeRemaining}s
           </div>
         </div>
-        <div className="flex justify-between text-sm text-zinc-600">
+        <div className="flex justify-between text-sm text-blue-600">
           <div>Correct: {correctAnswers}</div>
           <div>Wrong: {wrongAnswers}/{MAX_WRONG_ANSWERS}</div>
         </div>
       </div>
 
-      {/* Quiz card */}
-      {currentQuiz && (
+      {/* Quiz card - only show when game is active */}
+      {currentQuiz && isActive && (
         <div className="w-full max-w-md">
-          <div className="bg-white rounded-2xl shadow-xl p-6 border-2 border-gray-200">
-            <h2 className="text-xl font-bold mb-4">{currentQuiz.data.title}</h2>
+          <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-xl p-6 border-2 border-blue-200">
+            <h2 className="text-xl font-bold mb-4 text-blue-900">{currentQuiz.data.title}</h2>
             <div className="mb-6">
-              <p className="text-gray-700 mb-4">{currentQuiz.data.content.question}</p>
+              <p className="text-blue-800 mb-4">{currentQuiz.data.content.question}</p>
               <div className="space-y-2">
                 {currentQuiz.data.content.options.map((option, index) => {
                   const isSelected = selectedAnswer === index;
                   const isCorrect = index === currentQuiz.data.content.correct_answer;
 
-                  let bgColor = "bg-gray-100 hover:bg-gray-200";
+                  let bgColor = "bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200";
+                  
                   if (showResult) {
                     if (isCorrect) {
-                      bgColor = "bg-green-500 text-white";
+                      bgColor = "bg-green-500 text-white border-green-600";
                     } else if (isSelected && !isCorrect) {
-                      bgColor = "bg-red-500 text-white";
+                      bgColor = "bg-red-300 text-white border-red-400";
+                    } else {
+                      // Reset to default for non-selected, non-correct options
+                      bgColor = "bg-blue-50 text-blue-900 border border-blue-200";
                     }
+                  } else {
+                    // When not showing results, ensure all options have the same default color
+                    bgColor = "bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200";
                   }
 
                   return (
                     <button
-                      key={index}
+                      key={`${currentQuizIndex}-${index}`}
                       onClick={() =>
                         handleAnswerClick(index, currentQuiz.data.content.correct_answer)
                       }
@@ -282,8 +289,8 @@ export function PuzzleRush() {
 
       {/* Start button if not active */}
       {!isActive && !isFinished && (
-        <div className="mt-8">
-          <Button onClick={startGame} className="text-lg px-8 py-6">
+        <div className="mt-48">
+          <Button onClick={startGame} className="rounded-full text-lg px-8 py-6 h-auto">
             Start Puzzle Rush
           </Button>
         </div>

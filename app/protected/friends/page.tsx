@@ -147,12 +147,12 @@ export default function FriendsPage() {
 
   return (
     <div className="px-4 py-6 pb-24">
-      <h1 className="text-2xl font-bold mb-6">Friends</h1>
+      <h1 className="text-2xl font-bold mb-6 text-blue-900">Friends</h1>
 
       {/* Search Bar */}
       <div ref={searchRef} className="relative mb-6">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-blue-400" />
           <input
             type="text"
             placeholder="Search by name or UCSC email..."
@@ -168,7 +168,7 @@ export default function FriendsPage() {
                 setShowSuggestions(true);
               }
             }}
-            className="w-full rounded-lg border border-zinc-200 bg-white px-10 py-2.5 text-sm focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400"
+            className="w-full rounded-lg border border-blue-200 bg-white px-10 py-2.5 text-sm focus:border-blue-400 focus:outline-none focus:ring-1 focus:ring-blue-400 text-blue-900"
           />
           {searchQuery && (
             <button
@@ -177,7 +177,7 @@ export default function FriendsPage() {
                 setSearchResults([]);
                 setShowSuggestions(false);
               }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-blue-400 hover:text-blue-600"
             >
               <X className="h-4 w-4" />
             </button>
@@ -186,10 +186,10 @@ export default function FriendsPage() {
 
         {/* Search Suggestions */}
         {showSuggestions && (loading || searchResults.length > 0) && (
-          <div className="absolute z-50 mt-2 w-full rounded-lg border border-zinc-200 bg-white shadow-lg">
+          <div className="absolute z-50 mt-2 w-full rounded-lg border border-blue-200 bg-white shadow-lg">
             <div className="max-h-60 overflow-auto">
               {loading ? (
-                <div className="px-4 py-3 text-sm text-zinc-500">Searching...</div>
+                <div className="px-4 py-3 text-sm text-blue-600">Searching...</div>
               ) : searchResults.length > 0 ? (
                 searchResults.map((user) => {
                   const isFollowing = followingMap.has(user.id);
@@ -200,22 +200,22 @@ export default function FriendsPage() {
                   return (
                     <div
                       key={user.id}
-                      className="flex items-center justify-between px-4 py-3 hover:bg-zinc-50 transition-colors border-b border-zinc-100 last:border-b-0"
+                      className="flex items-center justify-between px-4 py-3 hover:bg-blue-50 transition-colors border-b border-blue-100 last:border-b-0"
                     >
                       <button
                         onClick={() => handleSelectUser(user)}
                         className="flex-1 text-left"
                       >
-                        <div className="font-medium text-zinc-900">{user.name}</div>
+                        <div className="font-medium text-blue-900">{user.name}</div>
                         {emailDisplay && (
-                          <div className="text-xs text-zinc-500 mt-0.5">
+                          <div className="text-xs text-blue-600 mt-0.5">
                             {emailDisplay}@ucsc.edu
                           </div>
                         )}
                       </button>
                       <button
                         onClick={() => handleFollow(user.id)}
-                        className="ml-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-200 hover:bg-zinc-50 transition-colors text-sm font-medium"
+                        className="ml-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors text-sm font-medium text-blue-700"
                       >
                         {isFollowing ? (
                           <>
@@ -233,7 +233,7 @@ export default function FriendsPage() {
                   );
                 })
               ) : (
-                <div className="px-4 py-3 text-sm text-zinc-500">No users found</div>
+                <div className="px-4 py-3 text-sm text-blue-600">No users found</div>
               )}
             </div>
           </div>
@@ -242,7 +242,7 @@ export default function FriendsPage() {
 
       {/* Instructions */}
       {!searchQuery && (
-        <div className="text-center py-12 text-zinc-500">
+        <div className="text-center py-12 text-blue-600">
           <p className="mb-2">Search for friends by name or UCSC email</p>
           <p className="text-sm">You can search by email prefix (e.g., "username" for username@ucsc.edu)</p>
         </div>

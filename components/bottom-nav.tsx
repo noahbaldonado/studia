@@ -14,7 +14,7 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-zinc-200 bg-white"
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-blue-200 bg-gradient-to-t from-white via-blue-50 to-white backdrop-blur-sm"
       style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
     >
       <div className="flex items-center justify-around py-3">
@@ -24,10 +24,10 @@ export function BottomNav() {
           aria-label="Home"
         >
           <Home
-            className={`h-6 w-6 ${isHome ? "text-black" : "text-zinc-400"}`}
+            className={`h-6 w-6 ${isHome ? "text-blue-600" : "text-blue-300"}`}
           />
           <span
-            className={`text-xs font-medium ${isHome ? "text-black" : "text-zinc-400"}`}
+            className={`text-xs font-medium ${isHome ? "text-blue-600" : "text-blue-300"}`}
           >
             Home
           </span>
@@ -38,10 +38,10 @@ export function BottomNav() {
           aria-label="Courses"
         >
           <BookOpen
-            className={`h-6 w-6 ${isCourses ? "text-black" : "text-zinc-400"}`}
+            className={`h-6 w-6 ${isCourses ? "text-blue-600" : "text-blue-300"}`}
           />
           <span
-            className={`text-xs font-medium ${isCourses ? "text-black" : "text-zinc-400"}`}
+            className={`text-xs font-medium ${isCourses ? "text-blue-600" : "text-blue-300"}`}
           >
             Courses
           </span>
@@ -52,10 +52,10 @@ export function BottomNav() {
           aria-label="Puzzle Rush"
         >
           <Timer
-            className={`h-6 w-6 ${isPuzzleRush ? "text-black" : "text-zinc-400"}`}
+            className={`h-6 w-6 ${isPuzzleRush ? "text-blue-600" : "text-blue-300"}`}
           />
           <span
-            className={`text-xs font-medium ${isPuzzleRush ? "text-black" : "text-zinc-400"}`}
+            className={`text-xs font-medium ${isPuzzleRush ? "text-blue-600" : "text-blue-300"}`}
           >
             Puzzle Rush
           </span>
@@ -66,10 +66,10 @@ export function BottomNav() {
           aria-label="Friends"
         >
           <Users
-            className={`h-6 w-6 ${isFriends ? "text-black" : "text-zinc-400"}`}
+            className={`h-6 w-6 ${isFriends ? "text-blue-600" : "text-blue-300"}`}
           />
           <span
-            className={`text-xs font-medium ${isFriends ? "text-black" : "text-zinc-400"}`}
+            className={`text-xs font-medium ${isFriends ? "text-blue-600" : "text-blue-300"}`}
           >
             Friends
           </span>
@@ -80,10 +80,10 @@ export function BottomNav() {
           aria-label="Profile"
         >
           <User
-            className={`h-6 w-6 ${isProfile ? "text-black" : "text-zinc-400"}`}
+            className={`h-6 w-6 ${isProfile ? "text-blue-600" : "text-blue-300"}`}
           />
           <span
-            className={`text-xs font-medium ${isProfile ? "text-black" : "text-zinc-400"}`}
+            className={`text-xs font-medium ${isProfile ? "text-blue-600" : "text-blue-300"}`}
           >
             Profile
           </span>

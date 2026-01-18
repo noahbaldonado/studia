@@ -13,6 +13,7 @@ interface Comment {
   userLike: boolean | null;
   created_at: string;
   replies: Comment[];
+  userId?: string; // Add userId for ownership checks
 }
 
 interface QuizCommentsProps {
@@ -118,6 +119,44 @@ export function QuizComments({ quizId }: QuizCommentsProps) {
     [comments]
   );
 
+  const handleCommentDeleted = useCallback(
+    (commentId: string) => {
+      const removeComment = (commentList: Comment[]): Comment[] => {
+        return commentList
+          .filter((comment) => comment.id !== commentId)
+          .map((comment) => ({
+            ...comment,
+            replies: removeComment(comment.replies),
+          }));
+      };
+      setComments(removeComment(comments));
+      // Reload to update count
+      loadComments();
+    },
+    [comments, loadComments]
+  );
+
+  const handleCommentUpdated = useCallback(
+    (commentId: string, newContent: string) => {
+      const updateComment = (commentList: Comment[]): Comment[] => {
+        return commentList.map((comment) => {
+          if (comment.id === commentId) {
+            return { ...comment, content: newContent };
+          }
+          if (comment.replies.length > 0) {
+            return {
+              ...comment,
+              replies: updateComment(comment.replies),
+            };
+          }
+          return comment;
+        });
+      };
+      setComments(updateComment(comments));
+    },
+    [comments]
+  );
+
   const handleSubmitComment = async () => {
     if (!commentContent.trim() || isSubmitting) return;
 
@@ -149,10 +188,10 @@ export function QuizComments({ quizId }: QuizCommentsProps) {
   };
 
   return (
-    <div className="mt-4 border-t border-gray-200 pt-4">
+    <div className="mt-4 border-t border-blue-200 pt-4">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center gap-2 text-sm font-medium text-gray-700 hover:text-gray-900 w-full text-left"
+        className="flex items-center gap-2 text-sm font-medium text-blue-700 hover:text-blue-900 w-full text-left"
       >
         <MessageSquare className="w-4 h-4" />
         <span>
@@ -174,7 +213,7 @@ export function QuizComments({ quizId }: QuizCommentsProps) {
               value={commentContent}
               onChange={(e) => setCommentContent(e.target.value)}
               placeholder="Write a comment..."
-              className="w-full p-3 bg-white text-gray-900 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-gray-500"
+              className="w-full p-3 bg-white text-blue-900 border border-blue-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-blue-400"
               rows={3}
             />
             <button
@@ -189,14 +228,14 @@ export function QuizComments({ quizId }: QuizCommentsProps) {
 
           {/* Error message */}
           {error && (
-            <div className="text-red-600 text-sm">{error}</div>
+            <div className="text-blue-600 text-sm">{error}</div>
           )}
 
           {/* Comments list */}
           {isLoading ? (
-            <div className="text-center py-4 text-gray-500">Loading comments...</div>
+            <div className="text-center py-4 text-blue-600">Loading comments...</div>
           ) : comments.length === 0 ? (
-            <div className="text-center py-4 text-gray-500">No comments yet. Be the first to comment!</div>
+            <div className="text-center py-4 text-blue-600">No comments yet. Be the first to comment!</div>
           ) : (
             <div className="space-y-3">
                 {comments.map((comment) => (
@@ -207,6 +246,8 @@ export function QuizComments({ quizId }: QuizCommentsProps) {
                     onLikeChange={handleLikeChange}
                     onReply={() => {}} // Handled within CommentItem
                     onReplyAdded={loadComments}
+                    onCommentDeleted={handleCommentDeleted}
+                    onCommentUpdated={handleCommentUpdated}
                   />
                 ))}
             </div>

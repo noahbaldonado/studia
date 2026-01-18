@@ -47,6 +47,7 @@ export function MyPosts({ userId }: MyPostsProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<any>(null);
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [notification, setNotification] = useState<{ message: string; type: 'error' } | null>(null);
 
   const supabase = createClient();
 
@@ -100,7 +101,8 @@ export function MyPosts({ userId }: MyPostsProps) {
       setPosts(posts.filter((post) => post.id !== postId));
     } catch (error: any) {
       console.error("Error deleting post:", error);
-      alert(error.message || "Failed to delete post");
+      setNotification({ message: error.message || "Failed to delete post", type: "error" });
+      setTimeout(() => setNotification(null), 3000);
     } finally {
       setDeletingId(null);
     }
@@ -142,7 +144,8 @@ export function MyPosts({ userId }: MyPostsProps) {
       setEditData(null);
     } catch (error: any) {
       console.error("Error updating post:", error);
-      alert(error.message || "Failed to update post");
+      setNotification({ message: error.message || "Failed to update post", type: "error" });
+      setTimeout(() => setNotification(null), 3000);
     }
   };
 
@@ -611,6 +614,11 @@ export function MyPosts({ userId }: MyPostsProps) {
 
         return null;
       })}
+      {notification && (
+        <div className="mt-4 px-4 py-3 rounded-lg text-sm bg-red-50 text-red-800 border border-red-300">
+          {notification.message}
+        </div>
+      )}
     </div>
   );
 }

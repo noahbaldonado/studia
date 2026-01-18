@@ -28,6 +28,8 @@ export function MyMaterial({ userId }: MyMaterialProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [notification, setNotification] = useState<{ message: string; type: 'error' } | null>(null);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState<string | null>(null);
 
   const supabase = useMemo(() => createClient(), []);
 
@@ -103,13 +105,17 @@ export function MyMaterial({ userId }: MyMaterialProps) {
       URL.revokeObjectURL(url);
     } catch (err) {
       console.error("Download error:", err);
-      alert("Error downloading file");
+      setNotification({ message: "Error downloading file", type: "error" });
+      setTimeout(() => setNotification(null), 3000);
     }
   };
 
-  const handleDelete = async (pdfId: string, filePath: string) => {
-    if (!confirm("Are you sure you want to delete this PDF? This will remove it from the course.")) return;
+  const handleDeleteClick = (pdfId: string) => {
+    setShowDeleteConfirm(pdfId);
+  };
 
+  const handleConfirmDelete = async (pdfId: string, filePath: string) => {
+    setShowDeleteConfirm(null);
     try {
       setDeletingId(pdfId);
 
@@ -132,10 +138,15 @@ export function MyMaterial({ userId }: MyMaterialProps) {
       setPdfs(pdfs.filter((pdf) => pdf.id !== pdfId));
     } catch (err) {
       console.error("Delete error:", err);
-      alert("Error deleting file");
+      setNotification({ message: "Error deleting file", type: "error" });
+      setTimeout(() => setNotification(null), 3000);
     } finally {
       setDeletingId(null);
     }
+  };
+
+  const handleCancelDelete = () => {
+    setShowDeleteConfirm(null);
   };
 
   if (loading) {
@@ -204,7 +215,7 @@ export function MyMaterial({ userId }: MyMaterialProps) {
                 <Download className="h-4 w-4 text-zinc-600" />
               </button>
               <button
-                onClick={() => handleDelete(pdf.id, pdf.file_path)}
+                onClick={() => handleDeleteClick(pdf.id)}
                 disabled={deletingId === pdf.id}
                 className="p-2 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
                 aria-label="Delete"
@@ -216,9 +227,35 @@ export function MyMaterial({ userId }: MyMaterialProps) {
                 )}
               </button>
             </div>
+            {showDeleteConfirm === pdf.id && (
+              <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg">
+                <p className="text-sm text-red-600 mb-2">Are you sure you want to delete this PDF?</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleConfirmDelete(pdf.id, pdf.file_path)}
+                    disabled={deletingId === pdf.id}
+                    className="px-3 py-1.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 text-sm font-medium"
+                  >
+                    Delete
+                  </button>
+                  <button
+                    onClick={handleCancelDelete}
+                    disabled={deletingId === pdf.id}
+                    className="px-3 py-1.5 bg-blue-200 text-blue-700 rounded-lg hover:bg-blue-300 text-sm font-medium"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         );
       })}
+      {notification && (
+        <div className="mt-4 px-4 py-3 rounded-lg text-sm bg-red-50 text-red-800 border border-red-300">
+          {notification.message}
+        </div>
+      )}
     </div>
   );
 }

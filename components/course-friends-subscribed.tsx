@@ -62,10 +62,10 @@ export function CourseFriendsSubscribed({ courseId }: CourseFriendsSubscribedPro
     <>
       <button
         onClick={() => setShowModal(true)}
-        className="w-full text-left p-3 rounded-lg border border-zinc-200 hover:bg-zinc-50 transition-colors mb-4"
+        className="w-full text-center px-2 py-4 rounded-full border border-blue-200 bg-gradient-to-br from-white to-blue-50 hover:bg-blue-50 transition-colors mb-4"
       >
-        <div className="flex items-center gap-2 text-sm text-zinc-700">
-          <Users className="h-4 w-4 text-zinc-500" />
+        <div className="flex items-center justify-center gap-2 text-sm text-blue-700">
+          <Users className="h-4 w-4 text-blue-600" />
           <span>
             {friends.length === 1
               ? `${firstFriend.name} subscribes`
@@ -77,17 +77,17 @@ export function CourseFriendsSubscribed({ courseId }: CourseFriendsSubscribedPro
       </button>
 
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md bg-white rounded-lg shadow-xl max-h-[80vh] flex flex-col">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-900/50 p-4">
+          <div className="w-full max-w-md bg-gradient-to-br from-white to-blue-50 rounded-lg shadow-xl max-h-[80vh] flex flex-col border-2 border-blue-200">
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b">
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <Users className="h-5 w-5 text-zinc-500" />
+            <div className="flex items-center justify-between p-4 border-b border-blue-200">
+              <h2 className="text-xl font-bold flex items-center gap-2 text-blue-900">
+                <Users className="h-5 w-5 text-blue-600" />
                 Friends Subscribed
               </h2>
               <button
                 onClick={() => setShowModal(false)}
-                className="text-zinc-500 hover:text-zinc-900 text-xl font-bold"
+                className="text-blue-500 hover:text-blue-700 text-xl font-bold"
               >
                 ×
               </button>
@@ -96,7 +96,7 @@ export function CourseFriendsSubscribed({ courseId }: CourseFriendsSubscribedPro
             {/* Friends List */}
             <div className="flex-1 overflow-y-auto p-4">
               {friends.length === 0 ? (
-                <div className="text-center py-8 text-zinc-500">
+                <div className="text-center py-8 text-blue-600">
                   No friends subscribed
                 </div>
               ) : (
@@ -113,11 +113,11 @@ export function CourseFriendsSubscribed({ courseId }: CourseFriendsSubscribedPro
                         onClick={() => setShowModal(false)}
                         className="block"
                       >
-                        <div className="flex items-center justify-between py-3 px-3 rounded-lg border border-zinc-200 hover:bg-zinc-50 hover:border-zinc-300 transition-colors cursor-pointer">
+                        <div className="flex items-center justify-between py-3 px-3 rounded-lg border border-blue-200 hover:bg-blue-50 hover:border-blue-300 transition-colors cursor-pointer bg-white">
                           <div className="flex-1">
-                            <div className="font-medium text-zinc-900">{friend.name}</div>
+                            <div className="font-medium text-blue-900">{friend.name}</div>
                             {emailDisplay && (
-                              <div className="text-xs text-zinc-500 mt-0.5">
+                              <div className="text-xs text-blue-600 mt-0.5">
                                 {emailDisplay}@ucsc.edu
                               </div>
                             )}

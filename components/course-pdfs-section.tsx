@@ -1,13 +1,14 @@
 "use client";
 
 import { PdfUpload } from "./pdf-upload";
-import { UploadPost } from "./upload-post";
+import { useRouter } from "next/navigation";
 
 interface CoursePdfsSectionProps {
   courseId: string;
 }
 
 export function CoursePdfsSection({ courseId }: CoursePdfsSectionProps) {
+  const router = useRouter();
   const handleUploadSuccess = () => {
     // Upload successo, nessuna azione necessaria
   };
@@ -15,8 +16,12 @@ export function CoursePdfsSection({ courseId }: CoursePdfsSectionProps) {
   return (
     <div className="mt-8">
       <div className="mb-8">
-        <h3 className="text-lg font-semibold mb-4">Upload Post</h3>
-        <UploadPost courseId={courseId} onUploadSuccess={handleUploadSuccess} />
+        <button
+          onClick={() => router.push(`/protected/courses/${courseId}/upload-post`)}
+          className="text-lg font-semibold text-blue-900 hover:text-blue-700 transition-colors w-full text-left"
+        >
+          Upload Post
+        </button>
       </div>
       
       <div className="mb-8">

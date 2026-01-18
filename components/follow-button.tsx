@@ -12,6 +12,7 @@ export function FollowButton({ targetUserId }: FollowButtonProps) {
   const [isFollowing, setIsFollowing] = useState(false);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [notification, setNotification] = useState<{ message: string; type: 'error' } | null>(null);
   const supabase = createClient();
 
   // Check if current user is following the target user
@@ -60,7 +61,8 @@ export function FollowButton({ targetUserId }: FollowButtonProps) {
         if (response.ok) {
           setIsFollowing(false);
         } else {
-          alert("Failed to unfollow. Please try again.");
+          setNotification({ message: "Failed to unfollow. Please try again.", type: "error" });
+          setTimeout(() => setNotification(null), 3000);
         }
       } else {
         // Follow
@@ -75,12 +77,14 @@ export function FollowButton({ targetUserId }: FollowButtonProps) {
         if (response.ok) {
           setIsFollowing(true);
         } else {
-          alert("Failed to follow. Please try again.");
+          setNotification({ message: "Failed to follow. Please try again.", type: "error" });
+          setTimeout(() => setNotification(null), 3000);
         }
       }
     } catch (err) {
       console.error("Error toggling follow:", err);
-      alert("An error occurred. Please try again.");
+      setNotification({ message: "An error occurred. Please try again.", type: "error" });
+      setTimeout(() => setNotification(null), 3000);
     } finally {
       setUpdating(false);
     }
@@ -95,17 +99,24 @@ export function FollowButton({ targetUserId }: FollowButtonProps) {
   }
 
   return (
-    <Button
-      onClick={handleToggle}
-      disabled={updating}
-      variant={isFollowing ? "outline" : "default"}
-      className="w-full sm:w-auto"
-    >
-      {updating
-        ? "Updating..."
-        : isFollowing
-        ? "Unfollow"
-        : "Follow"}
-    </Button>
+    <div>
+      <Button
+        onClick={handleToggle}
+        disabled={updating}
+        variant={isFollowing ? "outline" : "default"}
+        className="w-full sm:w-auto"
+      >
+        {updating
+          ? "Updating..."
+          : isFollowing
+          ? "Unfollow"
+          : "Follow"}
+      </Button>
+      {notification && (
+        <div className="mt-2 px-4 py-3 rounded-lg text-sm bg-red-50 text-red-800 border border-red-300">
+          {notification.message}
+        </div>
+      )}
+    </div>
   );
 }

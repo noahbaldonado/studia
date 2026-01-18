@@ -13,6 +13,7 @@ export function SubscribeButton({ courseId, userId }: SubscribeButtonProps) {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
+  const [notification, setNotification] = useState<{ message: string; type: 'error' } | null>(null);
   const supabase = createClient();
 
   // Check if user is subscribed
@@ -57,7 +58,8 @@ export function SubscribeButton({ courseId, userId }: SubscribeButtonProps) {
 
         if (error) {
           console.error("Error unsubscribing:", error);
-          alert("Failed to unsubscribe. Please try again.");
+          setNotification({ message: "Failed to unsubscribe. Please try again.", type: "error" });
+          setTimeout(() => setNotification(null), 3000);
         } else {
           setIsSubscribed(false);
         }
@@ -69,14 +71,16 @@ export function SubscribeButton({ courseId, userId }: SubscribeButtonProps) {
 
         if (error) {
           console.error("Error subscribing:", error);
-          alert("Failed to subscribe. Please try again.");
+          setNotification({ message: "Failed to subscribe. Please try again.", type: "error" });
+          setTimeout(() => setNotification(null), 3000);
         } else {
           setIsSubscribed(true);
         }
       }
     } catch (err) {
       console.error("Error toggling subscription:", err);
-      alert("An error occurred. Please try again.");
+      setNotification({ message: "An error occurred. Please try again.", type: "error" });
+      setTimeout(() => setNotification(null), 3000);
     } finally {
       setUpdating(false);
     }
@@ -84,24 +88,31 @@ export function SubscribeButton({ courseId, userId }: SubscribeButtonProps) {
 
   if (loading) {
     return (
-      <Button disabled className="w-full sm:w-auto">
+      <Button disabled className="w-full rounded-full h-14 px-2">
         Loading...
       </Button>
     );
   }
 
   return (
-    <Button
-      onClick={handleToggle}
-      disabled={updating}
-      variant={isSubscribed ? "outline" : "default"}
-      className="w-full sm:w-auto"
-    >
-      {updating
-        ? "Updating..."
-        : isSubscribed
-        ? "Unsubscribe"
-        : "Subscribe"}
-    </Button>
+    <div>
+      <Button
+        onClick={handleToggle}
+        disabled={updating}
+        variant={isSubscribed ? "outline" : "default"}
+        className="w-full rounded-full h-14 px-2"
+      >
+        {updating
+          ? "Updating..."
+          : isSubscribed
+          ? "Unsubscribe"
+          : "Subscribe"}
+      </Button>
+      {notification && (
+        <div className="mt-2 px-4 py-3 rounded-lg text-sm bg-red-50 text-red-800 border border-red-300">
+          {notification.message}
+        </div>
+      )}
+    </div>
   );
 }

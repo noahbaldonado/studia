@@ -1,8 +1,8 @@
 import { createClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
-import { CoursePdfsSection } from "@/components/course-pdfs-section";
 import { SubscribeButton } from "@/components/subscribe-button";
 import { CourseFriendsSubscribed } from "@/components/course-friends-subscribed";
+import { CourseActions } from "@/components/course-actions";
 
 export default async function CourseDetailPage({
   params,
@@ -30,28 +30,22 @@ export default async function CourseDetailPage({
   }
 
   return (
-    <div className="px-4 py-6 pb-24">
-      <h1 className="text-2xl font-bold mb-2">{course.name}</h1>
-      <p className="text-zinc-500 mb-6">{course.subject}</p>
+    <div className="px-4 pt-12 pb-24" style={{ maxWidth: '390px', margin: '0 auto' }}>
+      {/* Course Name */}
+      <h1 className="text-3xl font-bold text-blue-900 mb-8">{course.name}</h1>
       
-      <CourseFriendsSubscribed courseId={id} />
-      
+      {/* Friends Subscribed */}
       <div className="mb-6">
+        <CourseFriendsSubscribed courseId={id} />
+      </div>
+      
+      {/* Subscribe Button */}
+      <div className="mb-8">
         <SubscribeButton courseId={id} userId={user.id} />
       </div>
       
-      {course.course_link && (
-        <a
-          href={course.course_link}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-block text-blue-600 hover:text-blue-700 underline mb-8"
-        >
-          View Course Link →
-        </a>
-      )}
-
-      <CoursePdfsSection courseId={id} />
+      {/* Action Icons */}
+      <CourseActions courseId={id} courseLink={course.course_link} />
     </div>
   );
 }

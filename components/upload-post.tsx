@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
-import { BookOpen, FileText, StickyNote, Check, X } from "lucide-react";
+import { Check, X } from "lucide-react";
 
 interface UploadPostProps {
   courseId: string;
@@ -14,6 +14,7 @@ export function UploadPost({ courseId, onUploadSuccess }: UploadPostProps) {
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [notification, setNotification] = useState<{ message: string; type: 'error' } | null>(null);
   
   // Quiz state
   const [quizTitle, setQuizTitle] = useState("");
@@ -38,8 +39,9 @@ export function UploadPost({ courseId, onUploadSuccess }: UploadPostProps) {
 
       if (postType === "quiz") {
         if (!quizTitle || !quizQuestion || quizOptions.some(opt => !opt.trim())) {
-          alert("Please fill in all quiz fields");
+          setNotification({ message: "Please fill in all quiz fields", type: "error" });
           setUploading(false);
+          setTimeout(() => setNotification(null), 3000);
           return;
         }
         postData = {
@@ -53,8 +55,9 @@ export function UploadPost({ courseId, onUploadSuccess }: UploadPostProps) {
         };
       } else if (postType === "flashcard") {
         if (!flashcardQuestion || !flashcardAnswer) {
-          alert("Please fill in both question and answer");
+          setNotification({ message: "Please fill in both question and answer", type: "error" });
           setUploading(false);
+          setTimeout(() => setNotification(null), 3000);
           return;
         }
         postData = {
@@ -66,8 +69,9 @@ export function UploadPost({ courseId, onUploadSuccess }: UploadPostProps) {
         };
       } else if (postType === "sticky_note") {
         if (!noteTitle || !noteContent) {
-          alert("Please fill in both title and content");
+          setNotification({ message: "Please fill in both title and content", type: "error" });
           setUploading(false);
+          setTimeout(() => setNotification(null), 3000);
           return;
         }
         postData = {
@@ -125,41 +129,67 @@ export function UploadPost({ courseId, onUploadSuccess }: UploadPostProps) {
     }
   }, [uploadSuccess]);
 
+  const getTitle = () => {
+    switch (postType) {
+      case "quiz":
+        return "Upload Quiz";
+      case "flashcard":
+        return "Upload Flashcard";
+      case "sticky_note":
+        return "Upload Sticky Note";
+      default:
+        return "Upload Post";
+    }
+  };
+
+  const getButtonText = () => {
+    switch (postType) {
+      case "quiz":
+        return "Upload Quiz";
+      case "flashcard":
+        return "Upload Flashcard";
+      case "sticky_note":
+        return "Upload Sticky Note";
+      default:
+        return "Upload Post";
+    }
+  };
+
   return (
     <div className="space-y-4">
+      {/* Dynamic Title */}
+      <h1 className="text-2xl font-bold text-blue-900 mb-6">{getTitle()}</h1>
+
       {/* Type selector */}
-      <div className="flex gap-2 border-b pb-2">
+      <div className="flex gap-2 border-b border-blue-200 pb-2">
         <button
           onClick={() => setPostType("quiz")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+          className={`flex-1 text-center px-4 py-2 rounded-lg transition-colors ${
             postType === "quiz"
               ? "bg-blue-100 text-blue-700 font-semibold"
-              : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+              : "bg-blue-50 text-blue-600 hover:bg-blue-100"
           }`}
         >
-          <FileText className="h-4 w-4" />
           Quiz
         </button>
         <button
           onClick={() => setPostType("flashcard")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+          className={`flex-1 text-center px-4 py-2 rounded-lg transition-colors ${
             postType === "flashcard"
               ? "bg-blue-100 text-blue-700 font-semibold"
-              : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+              : "bg-blue-50 text-blue-600 hover:bg-blue-100"
           }`}
         >
-          <BookOpen className="h-4 w-4" />
           Flashcard
         </button>
         <button
           onClick={() => setPostType("sticky_note")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+          className={`flex-1 text-center px-4 py-2 rounded-lg transition-colors ${
             postType === "sticky_note"
               ? "bg-blue-100 text-blue-700 font-semibold"
-              : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200"
+              : "bg-blue-50 text-blue-600 hover:bg-blue-100"
           }`}
         >
-          <StickyNote className="h-4 w-4" />
           Sticky Note
         </button>
       </div>
@@ -168,49 +198,55 @@ export function UploadPost({ courseId, onUploadSuccess }: UploadPostProps) {
       {postType === "quiz" && (
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Title</label>
+            <label className="block text-sm font-medium mb-1 text-blue-900">Title</label>
             <input
               type="text"
               value={quizTitle}
               onChange={(e) => setQuizTitle(e.target.value)}
-              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-blue-900"
               placeholder="Enter quiz title"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Question</label>
+            <label className="block text-sm font-medium mb-1 text-blue-900">Question</label>
             <textarea
               value={quizQuestion}
               onChange={(e) => setQuizQuestion(e.target.value)}
-              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows={3}
+              className="w-full px-3 py-2.5 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-blue-900"
+              rows={4}
               placeholder="Enter question"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Options</label>
-            {quizOptions.map((option, index) => (
-              <div key={index} className="flex items-center gap-2 mb-2">
-                <input
-                  type="radio"
-                  name="correct"
-                  checked={correctAnswer === index}
-                  onChange={() => setCorrectAnswer(index)}
-                  className="h-4 w-4"
-                />
-                <input
-                  type="text"
-                  value={option}
-                  onChange={(e) => {
-                    const newOptions = [...quizOptions];
-                    newOptions[index] = e.target.value;
-                    setQuizOptions(newOptions);
-                  }}
-                  className="flex-1 px-3 py-2 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                  placeholder={`Option ${index + 1}`}
-                />
-              </div>
-            ))}
+            <label className="block text-sm font-medium mb-2 text-blue-900">Options</label>
+            <div className="space-y-2">
+              {quizOptions.map((option, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <input
+                    type="radio"
+                    name="correct"
+                    checked={correctAnswer === index}
+                    onChange={() => setCorrectAnswer(index)}
+                    className="h-4 w-4 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer flex-shrink-0"
+                  />
+                  <input
+                    type="text"
+                    value={option}
+                    onChange={(e) => {
+                      const newOptions = [...quizOptions];
+                      newOptions[index] = e.target.value;
+                      setQuizOptions(newOptions);
+                    }}
+                    className={`flex-1 px-3 py-2 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-blue-900 placeholder:text-blue-400 ${
+                      correctAnswer === index
+                        ? "bg-green-50 border-2 border-green-300"
+                        : "bg-white border border-blue-300"
+                    }`}
+                    placeholder={`Option ${index + 1}`}
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       )}
@@ -218,22 +254,22 @@ export function UploadPost({ courseId, onUploadSuccess }: UploadPostProps) {
       {postType === "flashcard" && (
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Question</label>
+            <label className="block text-sm font-medium mb-1 text-blue-900">Question</label>
             <textarea
               value={flashcardQuestion}
               onChange={(e) => setFlashcardQuestion(e.target.value)}
-              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows={3}
+              className="w-full px-3 py-2.5 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-blue-900"
+              rows={4}
               placeholder="Enter question"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Answer</label>
+            <label className="block text-sm font-medium mb-1 text-blue-900">Answer</label>
             <textarea
               value={flashcardAnswer}
               onChange={(e) => setFlashcardAnswer(e.target.value)}
-              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows={3}
+              className="w-full px-3 py-2.5 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-blue-900"
+              rows={4}
               placeholder="Enter answer"
             />
           </div>
@@ -243,22 +279,22 @@ export function UploadPost({ courseId, onUploadSuccess }: UploadPostProps) {
       {postType === "sticky_note" && (
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium mb-1">Title</label>
+            <label className="block text-sm font-medium mb-1 text-blue-900">Title</label>
             <input
               type="text"
               value={noteTitle}
               onChange={(e) => setNoteTitle(e.target.value)}
-              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-blue-900"
               placeholder="Enter note title"
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">Content</label>
+            <label className="block text-sm font-medium mb-1 text-blue-900">Content</label>
             <textarea
               value={noteContent}
               onChange={(e) => setNoteContent(e.target.value)}
-              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-              rows={5}
+              className="w-full px-3 py-2.5 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-blue-900"
+              rows={6}
               placeholder="Enter note content"
             />
           </div>
@@ -268,9 +304,9 @@ export function UploadPost({ courseId, onUploadSuccess }: UploadPostProps) {
       <Button
         onClick={handleUpload}
         disabled={uploading}
-        className="w-full"
+        className="w-full h-12 text-base font-semibold"
       >
-        {uploading ? "Uploading..." : "Upload Post"}
+        {uploading ? "Uploading..." : getButtonText()}
       </Button>
 
       {uploadSuccess && (
@@ -284,6 +320,13 @@ export function UploadPost({ courseId, onUploadSuccess }: UploadPostProps) {
         <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
           <X className="h-4 w-4 text-red-600" />
           <p className="text-sm text-red-600">{uploadError}</p>
+        </div>
+      )}
+
+      {/* In-app notification */}
+      {notification && (
+        <div className="mt-4 px-4 py-3 rounded-lg text-sm bg-red-50 text-red-800 border border-red-300">
+          {notification.message}
         </div>
       )}
     </div>

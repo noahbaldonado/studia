@@ -52,19 +52,19 @@ export function FollowList({ userId, type, limit = 5, showCount = false }: Follo
 
   if (loading) {
     return (
-      <div className="text-sm text-zinc-500 py-4">Loading {type}...</div>
+      <div className="text-sm text-blue-600 py-4">Loading {type}...</div>
     );
   }
 
   if (error) {
     return (
-      <div className="text-sm text-red-500 py-4">Error: {error}</div>
+      <div className="text-sm text-blue-600 py-4">Error: {error}</div>
     );
   }
 
   if (users.length === 0) {
     return (
-      <div className="text-sm text-zinc-500 py-4">
+      <div className="text-sm text-blue-600 py-4">
         No {type} yet
       </div>
     );
@@ -76,7 +76,7 @@ export function FollowList({ userId, type, limit = 5, showCount = false }: Follo
   return (
     <div className="space-y-2">
       {showCount && totalCount !== null && (
-        <div className="text-sm text-zinc-500 mb-2">
+        <div className="text-sm text-blue-600 mb-2">
           {totalCount} {totalCount === 1 ? type.slice(0, -1) : type}
         </div>
       )}
@@ -91,11 +91,11 @@ export function FollowList({ userId, type, limit = 5, showCount = false }: Follo
             href={`/protected/profile/${user.id}`}
             className="block"
           >
-            <div className="flex items-center justify-between py-2 px-3 rounded-lg border border-zinc-200 hover:bg-zinc-50 hover:border-zinc-300 transition-colors cursor-pointer">
+            <div className="flex items-center justify-between py-2 px-3 rounded-lg border border-blue-200 hover:bg-blue-50 hover:border-blue-300 transition-colors cursor-pointer bg-white">
               <div className="flex-1">
-                <div className="font-medium text-zinc-900">{user.name}</div>
+                <div className="font-medium text-blue-900">{user.name}</div>
                 {emailDisplay && (
-                  <div className="text-xs text-zinc-500 mt-0.5">
+                  <div className="text-xs text-blue-600 mt-0.5">
                     {emailDisplay}@ucsc.edu
                   </div>
                 )}
@@ -107,7 +107,7 @@ export function FollowList({ userId, type, limit = 5, showCount = false }: Follo
       {hasMore && (
         <Link
           href={`/protected/profile/${type}/${userId}`}
-          className="block py-2 px-3 rounded-lg border border-zinc-200 hover:bg-zinc-50 text-center text-sm text-blue-600 hover:underline"
+          className="block py-2 px-3 rounded-lg border border-blue-200 hover:bg-blue-50 text-center text-sm text-blue-600 hover:underline bg-white"
         >
           View all {totalCount} {type}
         </Link>
