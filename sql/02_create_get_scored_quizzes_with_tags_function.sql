@@ -1,5 +1,6 @@
 -- Function to get quizzes with calculated scores, filtered by user subscriptions
 -- Returns quizzes ordered by final_score (descending)
+-- Excludes quizzes the user has already liked/disliked
 -- Score calculation: 0.5 * quiz rating + 0.4 * sum(tag scores) + 0.1 * user score
 
 -- Drop the function first to ensure clean recreation
@@ -33,6 +34,12 @@ BEGIN
   LEFT JOIN quiz_tag qt ON qt.quiz_id = q.id
   LEFT JOIN tag t ON t.id = qt.tag_id
   WHERE cs.user_id = p_user_id
+    AND NOT EXISTS (
+      SELECT 1 
+      FROM quiz_interaction qi 
+      WHERE qi.quiz_id = q.id 
+        AND qi.user_id = p_user_id
+    )
   GROUP BY q.id, p.rating
   ORDER BY final_score DESC
   LIMIT p_limit;

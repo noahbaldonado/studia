@@ -47,8 +47,81 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if user has already interacted with this quiz
+    const { data: existingInteraction, error: interactionCheckError } = await supabase
+      .from("quiz_interaction")
+      .select("is_like")
+      .eq("quiz_id", quizId)
+      .eq("user_id", user.id)
+      .single();
+
+    // Determine if this is a new interaction, change, or removal
+    const isLike = ratingChange === 1;
+    let actualRatingChange = ratingChange;
+
+    if (interactionCheckError && interactionCheckError.code !== "PGRST116") {
+      // PGRST116 is "no rows returned" which is fine
+      console.error("Error checking existing interaction:", interactionCheckError);
+      // Continue with rating update anyway
+    } else if (existingInteraction) {
+      // User has already interacted
+      if (existingInteraction.is_like === isLike) {
+        // Same action - user is removing their like/dislike (toggle off)
+        // Reverse the previous change
+        actualRatingChange = -ratingChange; // If they liked (+1), now removing = -1
+      } else {
+        // Different action - user is changing from like to dislike or vice versa
+        // We need to reverse the previous rating change and apply the new one
+        // Example: was +1 (like), now -1 (dislike) = net change of -2
+        actualRatingChange = ratingChange * 2;
+      }
+    }
+
+    // Update or create quiz_interaction record
+    if (existingInteraction) {
+      if (existingInteraction.is_like === isLike) {
+        // Remove interaction (toggle off)
+        const { error: deleteError } = await supabase
+          .from("quiz_interaction")
+          .delete()
+          .eq("quiz_id", quizId)
+          .eq("user_id", user.id);
+
+        if (deleteError) {
+          console.error("Error removing quiz interaction:", deleteError);
+          // Continue with rating update
+        }
+      } else {
+        // Update interaction (change from like to dislike or vice versa)
+        const { error: updateInteractionError } = await supabase
+          .from("quiz_interaction")
+          .update({ is_like: isLike })
+          .eq("quiz_id", quizId)
+          .eq("user_id", user.id);
+
+        if (updateInteractionError) {
+          console.error("Error updating quiz interaction:", updateInteractionError);
+          // Continue with rating update
+        }
+      }
+    } else {
+      // Create new interaction
+      const { error: insertInteractionError } = await supabase
+        .from("quiz_interaction")
+        .insert({
+          quiz_id: quizId,
+          user_id: user.id,
+          is_like: isLike,
+        });
+
+      if (insertInteractionError) {
+        console.error("Error creating quiz interaction:", insertInteractionError);
+        // Continue with rating update
+      }
+    }
+
     // Calcola il nuovo rating
-    const newRating = (currentQuiz.rating || 0) + ratingChange;
+    const newRating = (currentQuiz.rating || 0) + actualRatingChange;
 
     // Aggiorna il rating nel database
     const { data, error: updateError } = await supabase
@@ -67,7 +140,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Update tag scores: ±0.2 for each tag associated with this quiz
-    const tagScoreChange = ratingChange * 0.2;
+    // Use actualRatingChange to handle toggle off and change scenarios correctly
+    const tagScoreChange = actualRatingChange * 0.2;
     
     // Fetch all tag IDs associated with this quiz
     const { data: quizTags, error: quizTagsError } = await supabase
@@ -94,7 +168,8 @@ export async function POST(request: NextRequest) {
     }
 
     // Update quiz creator's profile score: ±0.1
-    const userScoreChange = ratingChange * 0.1;
+    // Use actualRatingChange to handle toggle off and change scenarios correctly
+    const userScoreChange = actualRatingChange * 0.1;
     
     if (currentQuiz.user_id) {
       // Fetch current profile rating
