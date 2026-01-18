@@ -65,10 +65,18 @@ export async function POST(request: NextRequest) {
       // Continue with rating update anyway
     } else if (existingInteraction) {
       // User has already interacted
-      if (existingInteraction.is_like === isLike || isUndo) {
-        // Same action OR undo - user is removing their like/dislike (toggle off)
+      if (isUndo) {
+        // Undo - user is removing their like/dislike (toggle off)
         // Reverse the previous change
         actualRatingChange = -ratingChange; // If they liked (+1), now removing = -1
+      } else if (existingInteraction.is_like === isLike) {
+        // Same action - do nothing (prevent double-liking/disliking)
+        return NextResponse.json({
+          success: true,
+          quizId,
+          newRating: currentQuiz.rating,
+          message: "No change - already " + (isLike ? "liked" : "disliked"),
+        });
       } else {
         // Different action - user is changing from like to dislike or vice versa
         // We need to reverse the previous rating change and apply the new one
@@ -79,8 +87,8 @@ export async function POST(request: NextRequest) {
 
     // Update or create quiz_interaction record
     if (existingInteraction) {
-      if (existingInteraction.is_like === isLike || isUndo) {
-        // Remove interaction (toggle off or undo)
+      if (isUndo) {
+        // Remove interaction (undo)
         const { error: deleteError } = await supabase
           .from("quiz_interaction")
           .delete()
@@ -91,7 +99,7 @@ export async function POST(request: NextRequest) {
           console.error("Error removing quiz interaction:", deleteError);
           // Continue with rating update
         }
-      } else {
+      } else if (existingInteraction.is_like !== isLike) {
         // Update interaction (change from like to dislike or vice versa)
         const { error: updateInteractionError } = await supabase
           .from("quiz_interaction")
@@ -104,6 +112,7 @@ export async function POST(request: NextRequest) {
           // Continue with rating update
         }
       }
+      // If same action (existingInteraction.is_like === isLike), we already returned above
     } else {
       // Create new interaction
       const { error: insertInteractionError } = await supabase

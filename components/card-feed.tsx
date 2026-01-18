@@ -51,6 +51,7 @@ interface Quiz {
   course_id: string;
   rating: number;
   final_score?: number;
+  is_like?: boolean | null; // true for like, false for dislike, null/undefined for no interaction
 }
 
 const SWIPE_THRESHOLD = 100;
@@ -267,6 +268,7 @@ export function CardFeed() {
             course_id: quiz.course_id,
             rating: quiz.rating,
             final_score: quiz.final_score,
+            is_like: quiz.is_like ?? null,
           } as Quiz;
         });
         
@@ -626,7 +628,15 @@ export function CardFeed() {
       >
         {cardData.type === "quiz" ? (
         <div className="bg-white rounded-2xl shadow-xl p-6 border-2 border-gray-200">
-          <h2 className="text-xl font-bold mb-4">{cardData.title}</h2>
+          <div className="flex items-center gap-2 mb-4">
+            <h2 className="text-xl font-bold flex-1">{cardData.title}</h2>
+            {currentCard.is_like === true && (
+              <Heart className="w-5 h-5 text-red-500 fill-red-500" />
+            )}
+            {currentCard.is_like === false && (
+              <HeartOff className="w-5 h-5 text-gray-500" />
+            )}
+          </div>
           <div className="mb-6">
             <p className="text-gray-700 mb-4">{cardData.content.question}</p>
             <div className="space-y-2">
@@ -685,7 +695,15 @@ export function CardFeed() {
           className="bg-[#FEF08A] rounded-2xl shadow-xl p-6 border-2 border-yellow-300"
           style={{ minHeight: "400px" }}
         >
-          <h2 className="text-xl font-bold mb-4">{cardData.title}</h2>
+          <div className="flex items-center gap-2 mb-4">
+            <h2 className="text-xl font-bold flex-1">{cardData.title}</h2>
+            {currentCard.is_like === true && (
+              <Heart className="w-5 h-5 text-red-500 fill-red-500" />
+            )}
+            {currentCard.is_like === false && (
+              <HeartOff className="w-5 h-5 text-gray-500" />
+            )}
+          </div>
           <p className="text-gray-800 whitespace-pre-wrap mb-6">
             {cardData.content}
           </p>
@@ -705,6 +723,15 @@ export function CardFeed() {
         </div>
       ) : cardData.type === "flashcard" ? (
         <div className="bg-white rounded-2xl shadow-xl p-6 border-2 border-gray-200">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="flex-1"></div>
+            {currentCard.is_like === true && (
+              <Heart className="w-5 h-5 text-red-500 fill-red-500" />
+            )}
+            {currentCard.is_like === false && (
+              <HeartOff className="w-5 h-5 text-gray-500" />
+            )}
+          </div>
           <div 
             className="cursor-pointer mb-6"
             onClick={(e) => {
@@ -768,6 +795,15 @@ export function CardFeed() {
         </div>
       ) : cardData.type === "open_question" ? (
         <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl shadow-xl p-6 border-2 border-purple-200">
+          <div className="flex items-center gap-2 mb-4">
+            <div className="flex-1"></div>
+            {currentCard.is_like === true && (
+              <Heart className="w-5 h-5 text-red-500 fill-red-500" />
+            )}
+            {currentCard.is_like === false && (
+              <HeartOff className="w-5 h-5 text-gray-500" />
+            )}
+          </div>
           <div className="mb-6">
             <div className="bg-white rounded-lg p-4 mb-4 border border-purple-200">
               <p className="text-lg font-semibold text-gray-800 mb-2">Question:</p>
