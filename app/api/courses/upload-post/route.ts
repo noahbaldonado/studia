@@ -83,7 +83,7 @@ Generate tags now:`;
       // Parse JSON array from response
       try {
         // Try to extract JSON from markdown code blocks if present
-        const jsonMatch = text.match(/\[.*\]/s);
+        const jsonMatch = text.match(/\[[\s\S]*\]/);
         const jsonText = jsonMatch ? jsonMatch[0] : text;
         tags = JSON.parse(jsonText);
         if (!Array.isArray(tags)) {
