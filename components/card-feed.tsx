@@ -5,6 +5,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { CheckCircle2, X, Heart, HeartOff } from "lucide-react";
+import { QuizComments } from "./quiz-comments";
 
 interface QuizData {
   type: "quiz";
@@ -582,6 +583,9 @@ export function CardFeed() {
             </div>
           </div>
 
+          {/* Comments section */}
+          <QuizComments key={currentCard.id} quizId={currentCard.id} />
+
           <div className="mt-6 pt-4 border-t">
             <Link
               href={`/protected/courses/${currentCard.course_id}`}
@@ -601,6 +605,10 @@ export function CardFeed() {
           <p className="text-gray-800 whitespace-pre-wrap mb-6">
             {cardData.content}
           </p>
+
+          {/* Comments section */}
+          <QuizComments key={currentCard.id} quizId={currentCard.id} />
+
           <div className="mt-6 pt-4 border-t border-yellow-400">
             <Link
               href={`/protected/courses/${currentCard.course_id}`}
@@ -660,6 +668,9 @@ export function CardFeed() {
               </div>
             </div>
           </div>
+
+          {/* Comments section */}
+          <QuizComments key={currentCard.id} quizId={currentCard.id} />
           
           <div className="mt-6 pt-4 border-t">
             <Link
@@ -683,6 +694,10 @@ export function CardFeed() {
               <p className="text-purple-800 whitespace-pre-wrap">{cardData.content.answer}</p>
             </div>
           </div>
+
+          {/* Comments section */}
+          <QuizComments key={currentCard.id} quizId={currentCard.id} />
+
           <div className="mt-6 pt-4 border-t border-purple-200">
             <Link
               href={`/protected/courses/${currentCard.course_id}`}
