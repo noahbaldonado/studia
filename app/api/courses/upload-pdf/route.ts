@@ -65,6 +65,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Fetch course name to prefix tags
+    const { data: courseData, error: courseError } = await supabase
+      .from("course")
+      .select("name")
+      .eq("id", courseId)
+      .single();
+
+    if (courseError || !courseData) {
+      return NextResponse.json(
+        { error: "Course not found" },
+        { status: 404 }
+      );
+    }
+
+    const courseName = courseData.name;
+
     if (file.type !== "application/pdf") {
       return NextResponse.json(
         { error: "Only PDF files are supported" },
@@ -302,6 +318,10 @@ Generate the content now:`;
                 for (const tagName of tags) {
                   if (!tagName || typeof tagName !== 'string') continue;
                   
+                  // Prefix tag with course name (skip if it's already a UUID from PDF ID)
+                  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tagName);
+                  const prefixedTagName = isUuid ? tagName : `${courseName}: ${tagName}`;
+                  
                   // Get or create tag
                   let tagData: { id: number } | null = null;
                   
@@ -309,7 +329,7 @@ Generate the content now:`;
                   const { data: existingTag } = await supabase
                     .from("tag")
                     .select("id")
-                    .eq("name", tagName)
+                    .eq("name", prefixedTagName)
                     .single();
 
                   if (existingTag) {
@@ -318,12 +338,12 @@ Generate the content now:`;
                     // Tag doesn't exist, insert it
                     const { data: newTag, error: insertError } = await supabase
                       .from("tag")
-                      .insert({ name: tagName })
+                      .insert({ name: prefixedTagName })
                       .select("id")
                       .single();
 
                     if (insertError || !newTag) {
-                      console.error(`Error inserting tag "${tagName}":`, insertError);
+                      console.error(`Error inserting tag "${prefixedTagName}":`, insertError);
                       continue;
                     }
                     tagData = newTag;
@@ -343,7 +363,7 @@ Generate the content now:`;
                                        quizTagError.message?.toLowerCase().includes("duplicate") ||
                                        quizTagError.message?.toLowerCase().includes("unique");
                     if (!isDuplicate) {
-                      console.error(`Error linking tag "${tagName}" to quiz:`, quizTagError);
+                      console.error(`Error linking tag "${prefixedTagName}" to quiz:`, quizTagError);
                     }
                   }
                 }

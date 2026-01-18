@@ -26,6 +26,22 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Fetch course name to prefix tags
+    const { data: courseData, error: courseError } = await supabase
+      .from("course")
+      .select("name")
+      .eq("id", courseId)
+      .single();
+
+    if (courseError || !courseData) {
+      return NextResponse.json(
+        { error: "Course not found" },
+        { status: 404 }
+      );
+    }
+
+    const courseName = courseData.name;
+
     // Get Gemini API key
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) {
@@ -122,6 +138,9 @@ Generate tags now:`;
       for (const tagName of tags) {
         if (!tagName || typeof tagName !== "string") continue;
 
+        // Prefix tag with course name
+        const prefixedTagName = `${courseName}: ${tagName}`;
+
         // Get or create tag
         let tagData: { id: number } | null = null;
 
@@ -129,7 +148,7 @@ Generate tags now:`;
         const { data: existingTag } = await supabase
           .from("tag")
           .select("id")
-          .eq("name", tagName)
+          .eq("name", prefixedTagName)
           .single();
 
         if (existingTag) {
@@ -138,12 +157,12 @@ Generate tags now:`;
           // Tag doesn't exist, insert it
           const { data: newTag, error: insertError } = await supabase
             .from("tag")
-            .insert({ name: tagName })
+            .insert({ name: prefixedTagName })
             .select("id")
             .single();
 
           if (insertError || !newTag) {
-            console.error(`Error inserting tag "${tagName}":`, insertError);
+            console.error(`Error inserting tag "${prefixedTagName}":`, insertError);
             continue;
           }
           tagData = newTag;
@@ -159,7 +178,7 @@ Generate tags now:`;
 
         if (quizTagError && quizTagError.code !== "23505") {
           // Ignore duplicate key errors (23505 = unique violation)
-          console.error(`Error inserting quiz_tag for tag "${tagName}":`, quizTagError);
+          console.error(`Error inserting quiz_tag for tag "${prefixedTagName}":`, quizTagError);
         }
       }
     }
