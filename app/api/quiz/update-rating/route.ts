@@ -33,10 +33,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Ottieni il rating corrente
+    // Ottieni il rating corrente e user_id (quiz creator)
     const { data: currentQuiz, error: fetchError } = await supabase
       .from("quiz")
-      .select("rating")
+      .select("rating, user_id")
       .eq("id", quizId)
       .single();
 
@@ -90,6 +90,37 @@ export async function POST(request: NextRequest) {
       if (tagUpdateError) {
         console.error("Error updating tag scores:", tagUpdateError);
         // Continue even if tag score update fails - rating update was successful
+      }
+    }
+
+    // Update quiz creator's profile score: ±0.1
+    const userScoreChange = ratingChange * 0.1;
+    
+    if (currentQuiz.user_id) {
+      // Fetch current profile rating
+      const { data: profileData, error: profileFetchError } = await supabase
+        .from("profile")
+        .select("rating")
+        .eq("id", currentQuiz.user_id)
+        .single();
+
+      if (!profileFetchError && profileData) {
+        const currentUserRating = profileData.rating || 7.5;
+        const newUserRating = currentUserRating + userScoreChange;
+        
+        // Update profile rating
+        const { error: userScoreUpdateError } = await supabase
+          .from("profile")
+          .update({ rating: newUserRating })
+          .eq("id", currentQuiz.user_id);
+
+        if (userScoreUpdateError) {
+          console.error("Error updating user profile score:", userScoreUpdateError);
+          // Continue even if user score update fails - rating update was successful
+        }
+      } else {
+        console.error("Error fetching quiz creator profile:", profileFetchError);
+        // Continue even if profile fetch fails
       }
     }
 
