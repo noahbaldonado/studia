@@ -66,6 +66,33 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Update tag scores: ±0.2 for each tag associated with this quiz
+    const tagScoreChange = ratingChange * 0.2;
+    
+    // Fetch all tag IDs associated with this quiz
+    const { data: quizTags, error: quizTagsError } = await supabase
+      .from("quiz_tag")
+      .select("tag_id")
+      .eq("quiz_id", quizId);
+
+    if (quizTagsError) {
+      console.error("Error fetching quiz tags:", quizTagsError);
+      // Continue even if tag fetch fails - rating update was successful
+    } else if (quizTags && quizTags.length > 0) {
+      const tagIds = quizTags.map((qt) => qt.tag_id);
+      
+      // Update tag scores using RPC function for atomic updates
+      const { error: tagUpdateError } = await supabase.rpc("increment_tag_scores", {
+        tag_ids: tagIds,
+        score_delta: tagScoreChange,
+      });
+
+      if (tagUpdateError) {
+        console.error("Error updating tag scores:", tagUpdateError);
+        // Continue even if tag score update fails - rating update was successful
+      }
+    }
+
     return NextResponse.json({
       success: true,
       quizId,

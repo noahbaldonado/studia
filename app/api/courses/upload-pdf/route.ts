@@ -281,18 +281,81 @@ Generate the content now:`;
           // Save each valid item to the quiz table
           for (const item of validContent) {
             try {
-              const { error: quizInsertError } = await supabase
+              // Extract tags before saving (they'll be stored separately)
+              const tags = item.suggested_topic_tags || [];
+              
+              // Create a copy of the item without tags for the data column
+              const itemWithoutTags = { ...item };
+              delete itemWithoutTags.suggested_topic_tags;
+              
+              // Insert quiz into database
+              const { data: insertedQuiz, error: quizInsertError } = await supabase
                 .from("quiz")
                 .insert({
-                  data: item,
+                  data: itemWithoutTags,
                   rating: userRating,
                   course_id: courseId,
                   user_id: user.id,
-                });
+                })
+                .select("id")
+                .single();
 
-              if (quizInsertError) {
+              if (quizInsertError || !insertedQuiz) {
                 console.error("Error saving quiz/flashcard to database:", quizInsertError);
                 // Continue with other items even if one fails
+                continue;
+              }
+
+              // Save tags to tag and quiz_tag tables
+              if (tags.length > 0) {
+                for (const tagName of tags) {
+                  if (!tagName || typeof tagName !== 'string') continue;
+                  
+                  // Get or create tag
+                  let tagData: { id: number } | null = null;
+                  
+                  // First, try to get existing tag
+                  const { data: existingTag } = await supabase
+                    .from("tag")
+                    .select("id")
+                    .eq("name", tagName)
+                    .single();
+
+                  if (existingTag) {
+                    tagData = existingTag;
+                  } else {
+                    // Tag doesn't exist, insert it
+                    const { data: newTag, error: insertError } = await supabase
+                      .from("tag")
+                      .insert({ name: tagName })
+                      .select("id")
+                      .single();
+
+                    if (insertError || !newTag) {
+                      console.error(`Error inserting tag "${tagName}":`, insertError);
+                      continue;
+                    }
+                    tagData = newTag;
+                  }
+
+                  // Insert into quiz_tag join table (ignore if already exists)
+                  const { error: quizTagError } = await supabase
+                    .from("quiz_tag")
+                    .insert({
+                      quiz_id: insertedQuiz.id,
+                      tag_id: tagData.id,
+                    });
+
+                  if (quizTagError) {
+                    // Ignore duplicate key errors (tag already associated with quiz)
+                    const isDuplicate = quizTagError.code === "23505" || 
+                                       quizTagError.message?.toLowerCase().includes("duplicate") ||
+                                       quizTagError.message?.toLowerCase().includes("unique");
+                    if (!isDuplicate) {
+                      console.error(`Error linking tag "${tagName}" to quiz:`, quizTagError);
+                    }
+                  }
+                }
               }
             } catch (insertError) {
               console.error("Error inserting quiz item:", insertError);

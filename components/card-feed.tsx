@@ -77,9 +77,56 @@ export function CardFeed() {
   const loadCards = useCallback(async () => {
     try {
       const supabase = createClient();
+      
+      // Get authenticated user
+      const { data: { user }, error: userError } = await supabase.auth.getUser();
+      
+      if (userError || !user) {
+        console.error("Error getting user:", userError);
+        setIsLoading(false);
+        return;
+      }
+
+      // Get user's subscribed course IDs
+      const { data: subscriptions, error: subscriptionError } = await supabase
+        .from("course_subscription")
+        .select("course_id")
+        .eq("user_id", user.id);
+
+      if (subscriptionError) {
+        console.error("Error fetching subscriptions:", subscriptionError);
+        setIsLoading(false);
+        return;
+      }
+
+      const subscribedCourseIds = subscriptions?.map((s) => s.course_id) || [];
+
+      if (subscribedCourseIds.length === 0) {
+        // No subscriptions, return empty
+        setCards([]);
+        setCurrentIndex(0);
+        setIsLoading(false);
+        return;
+      }
+
+      // Clear existing cards before loading new ones
+      setCards([]);
+      
+      // Query quizzes from subscribed courses only
       const { data, error } = await supabase
         .from("quiz")
-        .select("id, data, course_id, rating")
+        .select(`
+          id, 
+          data, 
+          course_id, 
+          rating,
+          quiz_tag (
+            tag (
+              name
+            )
+          )
+        `)
+        .in("course_id", subscribedCourseIds)
         .order("id", { ascending: true })
         .limit(20);
 
@@ -89,7 +136,27 @@ export function CardFeed() {
       }
 
       if (data) {
-        setCards(data as Quiz[]);
+        // Reconstruct cards with tags from join tables
+        const cardsWithTags = data.map((quiz: any) => {
+          const tags = (quiz.quiz_tag || [])
+            .map((qt: any) => qt.tag?.name)
+            .filter((name: string | undefined): name is string => !!name);
+          
+          // Add tags back to data for backward compatibility
+          const cardData = quiz.data as CardData;
+          if (tags.length > 0) {
+            cardData.suggested_topic_tags = tags;
+          }
+          
+          return {
+            id: quiz.id,
+            data: cardData,
+            course_id: quiz.course_id,
+            rating: quiz.rating,
+          } as Quiz;
+        });
+        
+        setCards(cardsWithTags);
         setCurrentIndex(0);
       }
     } catch (error) {
