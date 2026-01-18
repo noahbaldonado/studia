@@ -32,8 +32,31 @@ export async function GET(request: Request) {
               rating: 7.5,
               metadata: {
                 name: userName,
+                email: user.email || "",
               },
             });
+        } else {
+          // Update email in metadata if it's missing
+          const { data: currentProfile } = await supabase
+            .from("profile")
+            .select("metadata")
+            .eq("id", user.id)
+            .single();
+          
+          if (currentProfile) {
+            const metadata = currentProfile.metadata as any;
+            if (!metadata?.email && user.email) {
+              await supabase
+                .from("profile")
+                .update({
+                  metadata: {
+                    ...metadata,
+                    email: user.email,
+                  },
+                })
+                .eq("id", user.id);
+            }
+          }
         }
       }
 

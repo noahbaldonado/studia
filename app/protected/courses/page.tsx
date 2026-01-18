@@ -8,12 +8,19 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const ITEMS_PER_PAGE = 20;
 
+interface FollowingUser {
+  id: string;
+  name: string;
+  email: string | null;
+}
+
 interface Course {
   id: string;
   name: string;
   subject: string;
   course_link?: string;
   isSubscribed?: boolean;
+  followingSubscribers?: FollowingUser[];
 }
 
 export default function CoursesPage() {
@@ -24,8 +31,22 @@ export default function CoursesPage() {
   const [allCourses, setAllCourses] = useState<Course[]>([]);
   const [subscribedCourseIds, setSubscribedCourseIds] = useState<Set<string>>(new Set());
   const [userId, setUserId] = useState<string | null>(null);
+  const [courseFollowingMap, setCourseFollowingMap] = useState<Record<string, FollowingUser[]>>({});
 
   const supabase = createClient();
+
+  // Fetch which following users are subscribed to courses
+  const fetchFollowingSubscriptions = async () => {
+    try {
+      const response = await fetch("/api/courses/following-subscriptions");
+      if (response.ok) {
+        const data = await response.json();
+        setCourseFollowingMap(data.courseFollowing || {});
+      }
+    } catch (err) {
+      console.error("Error fetching following subscriptions:", err);
+    }
+  };
 
   // Get user ID and fetch subscriptions in parallel
   useEffect(() => {
@@ -61,6 +82,7 @@ export default function CoursesPage() {
     }
 
     getUserAndSubscriptions();
+    fetchFollowingSubscriptions();
 
     // Refetch subscriptions when window gains focus (user navigates back)
     const handleFocus = async () => {
@@ -76,6 +98,9 @@ export default function CoursesPage() {
             const subscribedIds = new Set(data.map((sub) => sub.course_id));
             setSubscribedCourseIds(subscribedIds);
           }
+
+          // Also refetch following subscriptions
+          fetchFollowingSubscriptions();
         } catch (err) {
           console.error("Error refetching subscriptions:", err);
         }
@@ -165,6 +190,7 @@ export default function CoursesPage() {
     const coursesWithSubscription = allCourses.map((course) => ({
       ...course,
       isSubscribed: subscribedCourseIds.has(course.id),
+      followingSubscribers: courseFollowingMap[course.id] || [],
     }));
 
     // Sort: subscribed first, then alphabetically
@@ -175,7 +201,7 @@ export default function CoursesPage() {
     });
 
     return coursesWithSubscription;
-  }, [allCourses, subscribedCourseIds]);
+  }, [allCourses, subscribedCourseIds, courseFollowingMap]);
 
   // Filter courses based on search query (memoized for performance)
   const filteredCourses = useMemo(() => {
@@ -189,6 +215,7 @@ export default function CoursesPage() {
       .map((course) => ({
         ...course,
         isSubscribed: subscribedCourseIds.has(course.id),
+        followingSubscribers: courseFollowingMap[course.id] || [],
       }))
       .filter(
         (course) =>
@@ -203,7 +230,7 @@ export default function CoursesPage() {
       });
     
     return filtered;
-  }, [searchQuery, courses, allCourses, subscribedCourseIds]);
+  }, [searchQuery, courses, allCourses, subscribedCourseIds, courseFollowingMap]);
 
   // Reset to page 1 when search query changes
   useEffect(() => {

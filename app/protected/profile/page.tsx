@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { LogoutButton } from "@/components/logout-button";
 import { MyMaterial } from "@/components/my-material";
+import { FollowList } from "@/components/follow-list";
 
 export default async function UserProfilePage() {
   const supabase = await createClient();
@@ -44,6 +45,20 @@ export default async function UserProfilePage() {
               ))}
             </div>
             <p className="text-xs text-zinc-500 mt-1">User Rating</p>
+          </div>
+        </div>
+      </section>
+
+      {/* Following and Followers Section */}
+      <section className="mb-8">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <h2 className="text-lg font-bold mb-3">Following</h2>
+            <FollowList userId={user.id} type="following" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold mb-3">Followers</h2>
+            <FollowList userId={user.id} type="followers" />
           </div>
         </div>
       </section>

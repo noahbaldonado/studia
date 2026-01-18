@@ -18,6 +18,7 @@ Run the migrations in this order:
 2. `02_create_get_scored_quizzes_with_tags_function.sql` - Creates function to get scored quizzes filtered by subscriptions
 3. `03_create_comment_tables.sql` - Creates comment and comment_like tables for quiz commenting system
 4. `04_create_quiz_interaction_table.sql` - Creates quiz_interaction table to track which quizzes users have liked/disliked
+5. `05_create_follow_table.sql` - Creates follow table to track user relationships (who follows whom)
 
 ## What These Functions Do
 
@@ -48,6 +49,19 @@ Run the migrations in this order:
   - `created_at`, `updated_at` (TIMESTAMPTZ)
   - Primary key: (quiz_id, user_id)
 - RLS policies ensure users can only read/modify their own interactions
+
+### `follow` Table
+- Tracks user relationships (who follows whom)
+- Schema:
+  - `follower_id` (UUID, FK to auth.users) - The user who is following
+  - `following_id` (UUID, FK to auth.users) - The user being followed
+  - `created_at` (TIMESTAMPTZ)
+  - Primary key: (follower_id, following_id)
+  - Constraint: Users cannot follow themselves
+- RLS policies:
+  - Anyone can read follow relationships
+  - Users can create their own follow relationships (follow others)
+  - Users can delete their own follow relationships (unfollow)
 
 ## Permissions
 
