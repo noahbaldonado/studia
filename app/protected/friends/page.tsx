@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Search, X, UserPlus, UserMinus } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface User {
   id: string;
@@ -19,6 +20,7 @@ export default function FriendsPage() {
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const router = useRouter();
 
   const supabase = createClient();
 
@@ -140,8 +142,7 @@ export default function FriendsPage() {
   };
 
   const handleSelectUser = (user: User) => {
-    setSearchQuery(user.name);
-    setShowSuggestions(false);
+    router.push(`/protected/profile/${user.id}`);
   };
 
   return (

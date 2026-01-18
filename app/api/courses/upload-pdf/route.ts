@@ -146,8 +146,7 @@ Requirements:
 1. Generate 2-3 sticky-note-style notes: focus on random, interesting, or high-yield facts from the PDF that are useful for quick review.
 2. Generate 2-3 flashcards: specific front-back style (question/answer) for active recall.
 3. Generate 1-5 multiple-choice quizzes (MCQs): exactly 4 options with one correct answer.
-4. Generate 2 open questions: broader conceptual questions that require a detailed answer.
-5. All content must be directly derived from the PDF.
+4. All content must be directly derived from the PDF.
 
 Output format (JSON array):
 [
@@ -187,7 +186,6 @@ Output format (JSON array):
 
 Rules:
 - correct_answer is the index (0-3).
-- Ensure a clear distinction between flashcards (brief) and open questions (more complex).
 - Return ONLY valid JSON, no markdown formatting or code blocks.
 
 Generate the content now:`;
@@ -246,12 +244,6 @@ Generate the content now:`;
                 console.warn("Invalid flashcard structure, skipping");
                 continue;
               }
-            } else if (item.type === "open_question") {
-              const openQuestion = item as OpenQuestionItem;
-              if (!openQuestion.content?.question || !openQuestion.content?.answer) {
-                console.warn("Invalid open_question structure, skipping");
-                continue;
-              }
             } else {
               console.warn(`Unknown content type: ${(item as any).type}, skipping`);
               continue;
@@ -285,8 +277,7 @@ Generate the content now:`;
               const tags = item.suggested_topic_tags || [];
               
               // Create a copy of the item without tags for the data column
-              const itemWithoutTags = { ...item };
-              delete itemWithoutTags.suggested_topic_tags;
+              const { suggested_topic_tags, ...itemWithoutTags } = item;
               
               // Insert quiz into database
               const { data: insertedQuiz, error: quizInsertError } = await supabase

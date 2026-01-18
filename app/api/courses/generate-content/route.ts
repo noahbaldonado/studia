@@ -138,8 +138,7 @@ Requirements:
 1. Generate 2-3 sticky-note-style notes: focus on random, interesting, or high-yield facts from the PDF that are useful for quick review.
 2. Generate 2-3 flashcards: specific front-back style (question/answer) for active recall.
 3. Generate 1-5 multiple-choice quizzes (MCQs): exactly 4 options with one correct answer.
-4. Generate 2 open questions: broader conceptual questions that require a detailed answer.
-5. All content must be directly derived from the PDF.
+4. All content must be directly derived from the PDF.
 
 Output format (JSON array):
 [
@@ -179,7 +178,6 @@ Output format (JSON array):
 
 Rules:
 - correct_answer is the index (0-3).
-- Ensure a clear distinction between flashcards (brief) and open questions (more complex).
 - Return ONLY valid JSON, no markdown formatting or code blocks.
 
 Generate the content now:`;
@@ -213,7 +211,7 @@ Generate the content now:`;
         if (!itemType) {
           throw new Error("Item missing type");
         }
-        const validTypes = ["quiz", "sticky_note", "flashcard", "open_question"];
+        const validTypes = ["quiz", "sticky_note", "flashcard"];
         if (!validTypes.includes(itemType)) {
           throw new Error(`Invalid type: ${itemType}`);
         }
@@ -236,12 +234,6 @@ Generate the content now:`;
           const flashcard = item as FlashcardItem;
           if (!flashcard.content.question || !flashcard.content.answer) {
             throw new Error("Flashcard missing question or answer");
-          }
-        }
-        if (item.type === "open_question") {
-          const openQuestion = item as OpenQuestionItem;
-          if (!openQuestion.content.question || !openQuestion.content.answer) {
-            throw new Error("Open question missing question or answer");
           }
         }
       }

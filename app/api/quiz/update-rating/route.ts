@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { quizId, ratingChange } = body;
+    const { quizId, ratingChange, isUndo } = body;
 
     if (!quizId || ratingChange === undefined) {
       return NextResponse.json(
@@ -65,8 +65,8 @@ export async function POST(request: NextRequest) {
       // Continue with rating update anyway
     } else if (existingInteraction) {
       // User has already interacted
-      if (existingInteraction.is_like === isLike) {
-        // Same action - user is removing their like/dislike (toggle off)
+      if (existingInteraction.is_like === isLike || isUndo) {
+        // Same action OR undo - user is removing their like/dislike (toggle off)
         // Reverse the previous change
         actualRatingChange = -ratingChange; // If they liked (+1), now removing = -1
       } else {
@@ -79,8 +79,8 @@ export async function POST(request: NextRequest) {
 
     // Update or create quiz_interaction record
     if (existingInteraction) {
-      if (existingInteraction.is_like === isLike) {
-        // Remove interaction (toggle off)
+      if (existingInteraction.is_like === isLike || isUndo) {
+        // Remove interaction (toggle off or undo)
         const { error: deleteError } = await supabase
           .from("quiz_interaction")
           .delete()
@@ -167,6 +167,59 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Update current user's streak when they solve a quiz (swipe right/like)
+    // Track streak when user likes a quiz for the first time
+    if (ratingChange === 1 && !existingInteraction) {
+      const { data: currentUserProfile } = await supabase
+        .from("profile")
+        .select("metadata")
+        .eq("id", user.id)
+        .single();
+
+      if (currentUserProfile) {
+        const metadata = (currentUserProfile.metadata as any) || {};
+        const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+        const lastQuizDate = metadata.last_quiz_date || null;
+        const currentStreak = metadata.current_streak || 0;
+        const longestStreak = metadata.longest_streak || 0;
+        
+        let newStreak = currentStreak;
+        if (lastQuizDate === today) {
+          // Already solved today, don't increment
+          newStreak = currentStreak;
+        } else if (!lastQuizDate) {
+          // First quiz ever
+          newStreak = 1;
+        } else {
+          // Check if last quiz was yesterday (consecutive day)
+          const yesterday = new Date();
+          yesterday.setDate(yesterday.getDate() - 1);
+          const yesterdayStr = yesterday.toISOString().split("T")[0];
+          
+          if (lastQuizDate === yesterdayStr) {
+            // Consecutive day - increment streak
+            newStreak = currentStreak + 1;
+          } else {
+            // Streak broken - reset to 1
+            newStreak = 1;
+          }
+        }
+        
+        const updatedMetadata = {
+          ...metadata,
+          last_quiz_date: today,
+          current_streak: newStreak,
+          longest_streak: newStreak > longestStreak ? newStreak : longestStreak,
+        };
+        
+        // Update current user's streak in metadata
+        await supabase
+          .from("profile")
+          .update({ metadata: updatedMetadata })
+          .eq("id", user.id);
+      }
+    }
+
     // Update quiz creator's profile score: ±0.1
     // Use actualRatingChange to handle toggle off and change scenarios correctly
     const userScoreChange = actualRatingChange * 0.1;
@@ -181,9 +234,9 @@ export async function POST(request: NextRequest) {
 
       if (!profileFetchError && profileData) {
         const currentUserRating = profileData.rating || 7.5;
-        const newUserRating = currentUserRating + userScoreChange;
+        const newUserRating = Math.min(10, Math.max(0, currentUserRating + userScoreChange));
         
-        // Update profile rating
+        // Update profile rating (capped at 10/10)
         const { error: userScoreUpdateError } = await supabase
           .from("profile")
           .update({ rating: newUserRating })

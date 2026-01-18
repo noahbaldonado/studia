@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server";
 import { notFound, redirect } from "next/navigation";
 import { CoursePdfsSection } from "@/components/course-pdfs-section";
 import { SubscribeButton } from "@/components/subscribe-button";
+import { CourseFriendsSubscribed } from "@/components/course-friends-subscribed";
 
 export default async function CourseDetailPage({
   params,
@@ -32,6 +33,8 @@ export default async function CourseDetailPage({
     <div className="px-4 py-6 pb-24">
       <h1 className="text-2xl font-bold mb-2">{course.name}</h1>
       <p className="text-zinc-500 mb-6">{course.subject}</p>
+      
+      <CourseFriendsSubscribed courseId={id} />
       
       <div className="mb-6">
         <SubscribeButton courseId={id} userId={user.id} />

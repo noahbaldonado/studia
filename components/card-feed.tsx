@@ -62,11 +62,19 @@ export function CardFeed() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSwiping, setIsSwiping] = useState(false);
   const [swipeOffset, setSwipeOffset] = useState(0);
+  const [swipeOffsetY, setSwipeOffsetY] = useState(0);
   const [isInteracting, setIsInteracting] = useState(false);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [isExiting, setIsExiting] = useState(false);
   const [isFlipped, setIsFlipped] = useState(false);
+  const [swipeHistory, setSwipeHistory] = useState<Array<{ card: Quiz; ratingChange: number; index: number }>>([]);
+  const swipeHistoryRef = useRef<Array<{ card: Quiz; ratingChange: number; index: number }>>([]);
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    swipeHistoryRef.current = swipeHistory;
+  }, [swipeHistory]);
 
   const cardRef = useRef<HTMLDivElement>(null);
   const startX = useRef(0);
@@ -281,7 +289,7 @@ export function CardFeed() {
   }, [loadCards]);
 
   // Update rating in database via API
-  const updateRating = useCallback(async (quizId: string, ratingChange: number) => {
+  const updateRating = useCallback(async (quizId: string, ratingChange: number, isUndo: boolean = false) => {
     try {
       const response = await fetch("/api/quiz/update-rating", {
         method: "POST",
@@ -291,6 +299,7 @@ export function CardFeed() {
         body: JSON.stringify({
           quizId,
           ratingChange,
+          isUndo,
         }),
       });
 
@@ -322,6 +331,9 @@ export function CardFeed() {
       const ratingChange = direction === "right" ? 1 : -1;
       const cardToRemove = currentCard;
 
+      // Save to history for undo
+      setSwipeHistory((prev) => [...prev, { card: cardToRemove, ratingChange, index: currentIndex }]);
+
       setTimeout(() => {
         // Rimuovi la card dalla lista
         setCards((prev) => {
@@ -332,6 +344,7 @@ export function CardFeed() {
 
         // Reset stati
         setSwipeOffset(0);
+        setSwipeOffsetY(0);
         setIsSwiping(false);
         setSelectedAnswer(null);
         setIsExiting(false);
@@ -345,6 +358,47 @@ export function CardFeed() {
     },
     [currentIndex, cards, isUpdating, isExiting, updateRating]
   );
+
+  // Handle undo (swipe up)
+  const handleUndo = useCallback(() => {
+    if (swipeHistoryRef.current.length === 0 || isUpdating || isExiting) return;
+
+    const lastSwipe = swipeHistoryRef.current[swipeHistoryRef.current.length - 1];
+    if (!lastSwipe) return;
+
+    setIsUpdating(true);
+
+    // Revert the rating change (mark as undo so it removes interaction instead of changing it)
+    updateRating(lastSwipe.card.id, -lastSwipe.ratingChange, true).catch((error) => {
+      console.error("Error reverting rating:", error);
+    });
+
+    // Restore the card to its original position
+    setCards((currentCards) => {
+      const newCards = [...currentCards];
+      newCards.splice(lastSwipe.index, 0, lastSwipe.card);
+      
+      // Set index immediately after inserting the card
+      setTimeout(() => {
+        setCurrentIndex(lastSwipe.index);
+      }, 10);
+      
+      return newCards;
+    });
+
+    // Remove from history
+    setSwipeHistory((prev) => prev.slice(0, -1));
+
+    // Reset states
+    setTimeout(() => {
+      setSwipeOffset(0);
+      setSwipeOffsetY(0);
+      setIsSwiping(false);
+      setSelectedAnswer(null);
+      setIsFlipped(false);
+      setIsUpdating(false);
+    }, 10);
+  }, [isUpdating, isExiting, updateRating]);
 
   // Touch/Mouse handlers
   const handleStart = useCallback(
@@ -377,13 +431,20 @@ export function CardFeed() {
   );
 
   const handleMove = useCallback(
-    (clientX: number) => {
+    (clientX: number, clientY: number) => {
       if (isInteracting || !isDragging.current) return;
       const deltaX = clientX - startX.current;
+      const deltaY = clientY - startY.current;
 
-      if (Math.abs(deltaX) > 10) {
+      // Prioritize vertical swipe if it's stronger
+      if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > 10) {
+        setIsSwiping(true);
+        setSwipeOffsetY(deltaY);
+        setSwipeOffset(0);
+      } else if (Math.abs(deltaX) > 10) {
         setIsSwiping(true);
         setSwipeOffset(deltaX);
+        setSwipeOffsetY(0);
       }
     },
     [isInteracting]
@@ -394,28 +455,46 @@ export function CardFeed() {
 
     if (isDragging.current) {
       const deltaX = swipeOffset;
+      const deltaY = swipeOffsetY;
       const deltaTime = Date.now() - startTime.current;
-      const velocity = Math.abs(deltaX) / deltaTime;
 
-      if (
-        Math.abs(deltaX) > SWIPE_THRESHOLD ||
-        velocity > SWIPE_VELOCITY_THRESHOLD
-      ) {
-        if (deltaX > 0) {
-          handleSwipe("right");
+      // Check for vertical swipe (down) first
+      if (Math.abs(deltaY) > SWIPE_THRESHOLD && deltaY > 0 && swipeHistoryRef.current.length > 0) {
+        // Swipe down detected - undo last swipe
+        handleUndo();
+        setSwipeOffset(0);
+        setSwipeOffsetY(0);
+        setIsSwiping(false);
+      } else if (Math.abs(deltaX) > Math.abs(deltaY)) {
+        // Horizontal swipe
+        const velocity = Math.abs(deltaX) / deltaTime;
+
+        if (
+          Math.abs(deltaX) > SWIPE_THRESHOLD ||
+          velocity > SWIPE_VELOCITY_THRESHOLD
+        ) {
+          if (deltaX > 0) {
+            handleSwipe("right");
+          } else {
+            handleSwipe("left");
+          }
         } else {
-          handleSwipe("left");
+          // Reset position
+          setSwipeOffset(0);
+          setSwipeOffsetY(0);
+          setIsSwiping(false);
         }
       } else {
         // Reset position
         setSwipeOffset(0);
+        setSwipeOffsetY(0);
         setIsSwiping(false);
       }
     }
 
     isDragging.current = false;
     isMouseDown.current = false;
-  }, [swipeOffset, isInteracting, handleSwipe]);
+  }, [swipeOffset, swipeOffsetY, isInteracting, handleSwipe, handleUndo]);
 
   // Touch events
   const onTouchStart = useCallback(
@@ -428,12 +507,15 @@ export function CardFeed() {
 
   const onTouchMove = useCallback(
     (e: React.TouchEvent) => {
-      if (!isDragging.current && Math.abs(e.touches[0].clientX - startX.current) > 10) {
+      const touch = e.touches[0];
+      const deltaX = Math.abs(touch.clientX - startX.current);
+      const deltaY = Math.abs(touch.clientY - startY.current);
+      
+      if (!isDragging.current && (deltaX > 10 || deltaY > 10)) {
         isDragging.current = true;
       }
       if (isDragging.current) {
-        const touch = e.touches[0];
-        handleMove(touch.clientX);
+        handleMove(touch.clientX, touch.clientY);
       }
     },
     [handleMove]
@@ -465,11 +547,13 @@ export function CardFeed() {
 
     const handleGlobalMouseMove = (e: MouseEvent) => {
       if (isMouseDown.current) {
-        if (!isDragging.current && Math.abs(e.clientX - startX.current) > 10) {
+        const deltaX = Math.abs(e.clientX - startX.current);
+        const deltaY = Math.abs(e.clientY - startY.current);
+        if (!isDragging.current && (deltaX > 10 || deltaY > 10)) {
           isDragging.current = true;
         }
         if (isDragging.current) {
-          handleMove(e.clientX);
+          handleMove(e.clientX, e.clientY);
         }
       }
     };
@@ -528,7 +612,7 @@ export function CardFeed() {
         ref={cardRef}
         className="relative w-full max-w-md"
         style={{
-          transform: `translateX(${swipeOffset}px) rotate(${rotation}deg)`,
+          transform: `translate(${swipeOffset}px, ${swipeOffsetY}px) rotate(${rotation}deg)`,
           opacity: Math.max(opacity, 0.3),
           transition: isSwiping || isExiting ? "none" : "transform 0.3s ease-out, opacity 0.3s ease-out",
           pointerEvents: isExiting ? "none" : "auto",

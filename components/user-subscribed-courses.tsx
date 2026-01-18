@@ -14,10 +14,13 @@ interface Course {
 
 interface UserSubscribedCoursesProps {
   userId: string;
+  limit?: number;
+  showCount?: boolean;
 }
 
-export function UserSubscribedCourses({ userId }: UserSubscribedCoursesProps) {
+export function UserSubscribedCourses({ userId, limit = 5, showCount = false }: UserSubscribedCoursesProps) {
   const [courses, setCourses] = useState<Course[]>([]);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -57,7 +60,9 @@ export function UserSubscribedCourses({ userId }: UserSubscribedCoursesProps) {
           throw new Error("Failed to fetch courses");
         }
 
-        setCourses(coursesData || []);
+        const allCourses = coursesData || [];
+        setTotalCount(allCourses.length);
+        setCourses(limit ? allCourses.slice(0, limit) : allCourses);
       } catch (err) {
         console.error("Error fetching subscribed courses:", err);
         setError("Failed to load courses");
@@ -89,9 +94,17 @@ export function UserSubscribedCourses({ userId }: UserSubscribedCoursesProps) {
     );
   }
 
+  const displayedCourses = courses;
+  const hasMore = totalCount !== null && totalCount > displayedCourses.length;
+
   return (
     <div className="space-y-3">
-      {courses.map((course) => (
+      {showCount && totalCount !== null && (
+        <div className="text-sm text-zinc-500 mb-2">
+          {totalCount} {totalCount === 1 ? "course" : "courses"}
+        </div>
+      )}
+      {displayedCourses.map((course) => (
         <Link
           key={course.id}
           href={`/protected/courses/${course.id}`}
@@ -112,6 +125,14 @@ export function UserSubscribedCourses({ userId }: UserSubscribedCoursesProps) {
           </div>
         </Link>
       ))}
+      {hasMore && (
+        <Link
+          href={`/protected/profile/courses/${userId}`}
+          className="block py-2 px-3 rounded-lg border border-zinc-200 hover:bg-zinc-50 text-center text-sm text-blue-600 hover:underline"
+        >
+          View all {totalCount} courses
+        </Link>
+      )}
     </div>
   );
 }

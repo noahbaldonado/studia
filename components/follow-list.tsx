@@ -13,10 +13,13 @@ interface User {
 interface FollowListProps {
   userId: string;
   type: "following" | "followers";
+  limit?: number;
+  showCount?: boolean;
 }
 
-export function FollowList({ userId, type }: FollowListProps) {
+export function FollowList({ userId, type, limit = 5, showCount = false }: FollowListProps) {
   const [users, setUsers] = useState<User[]>([]);
+  const [totalCount, setTotalCount] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -33,7 +36,9 @@ export function FollowList({ userId, type }: FollowListProps) {
         }
 
         const data = await response.json();
-        setUsers(data.users || []);
+        const allUsers = data.users || [];
+        setTotalCount(allUsers.length);
+        setUsers(limit ? allUsers.slice(0, limit) : allUsers);
       } catch (err) {
         console.error(`Error fetching ${type}:`, err);
         setError("Failed to load users");
@@ -65,9 +70,17 @@ export function FollowList({ userId, type }: FollowListProps) {
     );
   }
 
+  const displayedUsers = users;
+  const hasMore = totalCount !== null && totalCount > displayedUsers.length;
+
   return (
     <div className="space-y-2">
-      {users.map((user) => {
+      {showCount && totalCount !== null && (
+        <div className="text-sm text-zinc-500 mb-2">
+          {totalCount} {totalCount === 1 ? type.slice(0, -1) : type}
+        </div>
+      )}
+      {displayedUsers.map((user) => {
         const emailDisplay = user.email
           ? user.email.replace("@ucsc.edu", "")
           : "";
@@ -91,6 +104,14 @@ export function FollowList({ userId, type }: FollowListProps) {
           </Link>
         );
       })}
+      {hasMore && (
+        <Link
+          href={`/protected/profile/${type}/${userId}`}
+          className="block py-2 px-3 rounded-lg border border-zinc-200 hover:bg-zinc-50 text-center text-sm text-blue-600 hover:underline"
+        >
+          View all {totalCount} {type}
+        </Link>
+      )}
     </div>
   );
 }
