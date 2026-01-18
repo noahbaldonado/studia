@@ -12,3 +12,10 @@
 body {
   @apply bg-background text-foreground;
 }
+
+@layer utilities {
+  .backface-hidden {
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+  }
+}

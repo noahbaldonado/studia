@@ -21,7 +21,25 @@ interface StickyNoteItem {
   suggested_topic_tags: string[];
 }
 
-type GeneratedContent = QuizItem | StickyNoteItem;
+interface FlashcardItem {
+  type: "flashcard";
+  content: {
+    question: string;
+    answer: string;
+  };
+  suggested_topic_tags: string[];
+}
+
+interface OpenQuestionItem {
+  type: "open_question";
+  content: {
+    question: string;
+    answer: string;
+  };
+  suggested_topic_tags: string[];
+}
+
+type GeneratedContent = QuizItem | StickyNoteItem | FlashcardItem | OpenQuestionItem;
 
 export async function POST(request: NextRequest) {
   try {
@@ -117,37 +135,52 @@ PDF Content:
 ${pdfText.substring(0, 50000)} ${pdfText.length > 50000 ? "...[truncated]" : ""}
 
 Requirements:
-1. Generate 1-2 sticky-note-style flashcards (concise, post-it note sized summaries)
-2. Generate 1-5 multiple-choice quizzes (MCQs)
-3. Questions must be directly based on the PDF content
-4. MCQs should have exactly 4 options with exactly one correct answer
-5. Keep sticky notes short and high-yield
+1. Generate 2-3 sticky-note-style notes: focus on random, interesting, or high-yield facts from the PDF that are useful for quick review.
+2. Generate 2-3 flashcards: specific front-back style (question/answer) for active recall.
+3. Generate 1-5 multiple-choice quizzes (MCQs): exactly 4 options with one correct answer.
+4. Generate 2 open questions: broader conceptual questions that require a detailed answer.
+5. All content must be directly derived from the PDF.
 
 Output format (JSON array):
 [
   {
     "type": "sticky_note",
-    "title": "Brief title for the sticky note",
-    "content": "Concise summary content (post-it note sized)",
-    "suggested_topic_tags": ["tag1", "tag2"]
+    "title": "Insight Title",
+    "content": "Concise interesting fact or summary",
+    "suggested_topic_tags": ["tag1"]
+  },
+  {
+    "type": "flashcard",
+    "content": {
+      "question": "Short active recall question?",
+      "answer": "Direct concise answer"
+    },
+    "suggested_topic_tags": ["tag1"]
   },
   {
     "type": "quiz",
-    "title": "Question title or topic",
+    "title": "Topic Title",
     "content": {
-      "question": "The multiple choice question text",
-      "options": ["Option A", "Option B", "Option C", "Option D"],
+      "question": "The MCQ text",
+      "options": ["A", "B", "C", "D"],
       "correct_answer": 0
     },
-    "suggested_topic_tags": ["tag1", "tag2"]
+    "suggested_topic_tags": ["tag1"]
+  },
+  {
+    "type": "open_question",
+    "content": {
+      "question": "Conceptual or descriptive question?",
+      "answer": "Detailed explanatory answer"
+    },
+    "suggested_topic_tags": ["tag1"]
   }
 ]
 
 Rules:
-- correct_answer is the index (0-3) of the correct option in the options array
-- Include 1-2 sticky notes and 1-5 quizzes total
-- All content must be directly derived from the PDF
-- Return ONLY valid JSON, no markdown formatting or code blocks
+- correct_answer is the index (0-3).
+- Ensure a clear distinction between flashcards (brief) and open questions (more complex).
+- Return ONLY valid JSON, no markdown formatting or code blocks.
 
 Generate the content now:`;
 
@@ -176,8 +209,13 @@ Generate the content now:`;
       
       // Validate each item
       for (const item of generatedContent) {
-        if (!item.type || (item.type !== "quiz" && item.type !== "sticky_note")) {
-          throw new Error(`Invalid type: ${item.type}`);
+        const itemType = (item as any).type;
+        if (!itemType) {
+          throw new Error("Item missing type");
+        }
+        const validTypes = ["quiz", "sticky_note", "flashcard", "open_question"];
+        if (!validTypes.includes(itemType)) {
+          throw new Error(`Invalid type: ${itemType}`);
         }
         if (item.type === "quiz") {
           const quiz = item as QuizItem;
@@ -192,6 +230,18 @@ Generate the content now:`;
           const note = item as StickyNoteItem;
           if (!note.content) {
             throw new Error("Sticky note missing content");
+          }
+        }
+        if (item.type === "flashcard") {
+          const flashcard = item as FlashcardItem;
+          if (!flashcard.content.question || !flashcard.content.answer) {
+            throw new Error("Flashcard missing question or answer");
+          }
+        }
+        if (item.type === "open_question") {
+          const openQuestion = item as OpenQuestionItem;
+          if (!openQuestion.content.question || !openQuestion.content.answer) {
+            throw new Error("Open question missing question or answer");
           }
         }
       }
