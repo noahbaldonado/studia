@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, DragEvent } from "react";
-import { Upload, FileText, X } from "lucide-react";
+import { useState, useRef, DragEvent, useEffect } from "react";
+import { Upload, FileText, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface PdfUploadProps {
@@ -13,6 +13,7 @@ export function PdfUpload({ courseId, onUploadSuccess }: PdfUploadProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
@@ -54,6 +55,7 @@ export function PdfUpload({ courseId, onUploadSuccess }: PdfUploadProps) {
   const handleFileUpload = async (file: File) => {
     setIsUploading(true);
     setUploadError(null);
+    setUploadSuccess(false);
 
     try {
       const formData = new FormData();
@@ -70,6 +72,7 @@ export function PdfUpload({ courseId, onUploadSuccess }: PdfUploadProps) {
         throw new Error(error.error || "Error during upload");
       }
 
+      setUploadSuccess(true);
       onUploadSuccess();
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
@@ -82,6 +85,16 @@ export function PdfUpload({ courseId, onUploadSuccess }: PdfUploadProps) {
       setIsUploading(false);
     }
   };
+
+  // Auto-hide success message after 5 seconds
+  useEffect(() => {
+    if (uploadSuccess) {
+      const timer = setTimeout(() => {
+        setUploadSuccess(false);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [uploadSuccess]);
 
   return (
     <div className="mb-8">
@@ -121,6 +134,13 @@ export function PdfUpload({ courseId, onUploadSuccess }: PdfUploadProps) {
           Only PDF files are supported
         </p>
       </div>
+
+      {uploadSuccess && (
+        <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
+          <Check className="h-4 w-4 text-green-600" />
+          <p className="text-sm text-green-600">PDF uploaded successfully!</p>
+        </div>
+      )}
 
       {uploadError && (
         <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2">
