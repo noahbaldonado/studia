@@ -11,7 +11,7 @@ export function PuzzleRushHeader() {
     <>
       <div className="sticky top-0 bg-gradient-to-r from-white via-blue-50 to-white/80 backdrop-blur-sm z-10 px-4 py-4 border-b border-blue-200">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-blue-900">Puzzle Rush</h1>
+          <h1 className="text-2xl font-bold text-blue-900">Quiz Rush</h1>
           <button
             onClick={() => setIsLeaderboardOpen(true)}
             className="p-2 hover:bg-blue-100 rounded-full transition-colors"

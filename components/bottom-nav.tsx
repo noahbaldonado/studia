@@ -49,7 +49,7 @@ export function BottomNav() {
         <Link
           href="/protected/puzzle-rush"
           className="flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 px-3 transition-colors active:opacity-70"
-          aria-label="Puzzle Rush"
+          aria-label="Quiz Rush"
         >
           <Timer
             className={`h-6 w-6 ${isPuzzleRush ? "text-blue-600" : "text-blue-300"}`}
@@ -57,7 +57,7 @@ export function BottomNav() {
           <span
             className={`text-xs font-medium ${isPuzzleRush ? "text-blue-600" : "text-blue-300"}`}
           >
-            Puzzle Rush
+            Quiz Rush
           </span>
         </Link>
         <Link

@@ -88,10 +88,10 @@ export default async function UserProfilePage() {
         </div>
       </section>
 
-      {/* Puzzle Rush Best Score Section */}
+      {/* Quiz Rush Best Score Section */}
       <section className="mb-6">
         <div className="p-4 rounded-lg border border-blue-200 bg-gradient-to-br from-blue-50 to-white">
-          <h3 className="text-sm font-semibold text-blue-600 mb-1">Puzzle Rush Best Score</h3>
+          <h3 className="text-sm font-semibold text-blue-600 mb-1">Quiz Rush Best Score</h3>
           <p className="text-3xl font-bold text-blue-600">
             {puzzleRushBestScore} {puzzleRushBestScore === 1 ? "point" : "points"}
           </p>

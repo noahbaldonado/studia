@@ -1,14 +1,19 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Search, X, UserPlus, UserMinus } from "lucide-react";
+import { Search, X, UserPlus, UserMinus, ChevronRight } from "lucide-react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 interface User {
   id: string;
   name: string;
   email: string | null;
+}
+
+interface SuggestedUser extends User {
+  mutualCourses: number;
 }
 
 export default function FriendsPage() {
@@ -20,22 +25,11 @@ export default function FriendsPage() {
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const [showSuggestions, setShowSuggestions] = useState(false);
+  const [suggestedFriends, setSuggestedFriends] = useState<SuggestedUser[]>([]);
+  const [loadingSuggested, setLoadingSuggested] = useState(false);
   const router = useRouter();
 
   const supabase = createClient();
-
-  // Get current user ID
-  useEffect(() => {
-    async function getUserId() {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        setUserId(user.id);
-        // Load following list
-        loadFollowing(user.id);
-      }
-    }
-    getUserId();
-  }, [supabase]);
 
   // Load who the user is following
   async function loadFollowing(currentUserId: string) {
@@ -52,6 +46,45 @@ export default function FriendsPage() {
       console.error("Error loading following:", err);
     }
   }
+
+  // Load suggested friends based on mutual courses
+  const loadSuggestedFriends = useCallback(async () => {
+    if (!userId) return;
+    setLoadingSuggested(true);
+    try {
+      const response = await fetch("/api/users/suggested-friends");
+      if (response.ok) {
+        const data = await response.json();
+        setSuggestedFriends(data.users || []);
+      }
+    } catch (error) {
+      console.error("Error loading suggested friends:", error);
+    } finally {
+      setLoadingSuggested(false);
+    }
+  }, [userId]);
+
+  // Get current user ID
+  useEffect(() => {
+    async function getUserId() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        setUserId(user.id);
+        // Load following list
+        loadFollowing(user.id);
+        // Load suggested friends
+        loadSuggestedFriends();
+      }
+    }
+    getUserId();
+  }, [supabase, loadSuggestedFriends]);
+
+  // Reload suggested friends when following changes
+  useEffect(() => {
+    if (userId) {
+      loadSuggestedFriends();
+    }
+  }, [followingMap, userId, loadSuggestedFriends]);
 
   // Search users with debounce
   useEffect(() => {
@@ -121,6 +154,8 @@ export default function FriendsPage() {
             next.delete(targetUserId);
             return next;
           });
+          // Reload suggested friends after unfollowing
+          loadSuggestedFriends();
         }
       } else {
         // Follow
@@ -134,6 +169,8 @@ export default function FriendsPage() {
 
         if (response.ok) {
           setFollowingMap((prev) => new Set([...prev, targetUserId]));
+          // Reload suggested friends after following
+          loadSuggestedFriends();
         }
       }
     } catch (error) {
@@ -240,11 +277,75 @@ export default function FriendsPage() {
         )}
       </div>
 
-      {/* Instructions */}
+      {/* Suggested Friends */}
       {!searchQuery && (
-        <div className="text-center py-12 text-blue-600">
-          <p className="mb-2">Search for friends by name or UCSC email</p>
-          <p className="text-sm">You can search by email prefix (e.g., "username" for username@ucsc.edu)</p>
+        <div className="space-y-4 mt-8">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-semibold text-blue-900">Suggested Friends</h2>
+            {suggestedFriends.length > 5 && (
+              <Link
+                href="/protected/friends/suggested"
+                className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-1"
+              >
+                See All
+                <ChevronRight className="h-4 w-4" />
+              </Link>
+            )}
+          </div>
+          {loadingSuggested ? (
+            <div className="text-center py-8 text-blue-600">Loading suggested friends...</div>
+          ) : suggestedFriends.length > 0 ? (
+            <div className="space-y-2">
+              {suggestedFriends.slice(0, 5).map((user) => {
+                const isFollowing = followingMap.has(user.id);
+                const emailDisplay = user.email
+                  ? user.email.replace("@ucsc.edu", "")
+                  : "";
+
+                return (
+                  <div
+                    key={user.id}
+                    className="flex items-center justify-between p-3 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors bg-white"
+                  >
+                    <button
+                      onClick={() => handleSelectUser(user)}
+                      className="flex-1 text-left"
+                    >
+                      <div className="font-medium text-blue-900">{user.name}</div>
+                      {emailDisplay && (
+                        <div className="text-xs text-blue-600 mt-0.5">
+                          {emailDisplay}@ucsc.edu
+                        </div>
+                      )}
+                      <div className="text-xs text-blue-500 mt-1">
+                        {user.mutualCourses} {user.mutualCourses === 1 ? "mutual course" : "mutual courses"}
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => handleFollow(user.id)}
+                      className="ml-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors text-sm font-medium text-blue-700"
+                    >
+                      {isFollowing ? (
+                        <>
+                          <UserMinus className="h-4 w-4" />
+                          <span>Unfollow</span>
+                        </>
+                      ) : (
+                        <>
+                          <UserPlus className="h-4 w-4" />
+                          <span>Follow</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-blue-600">
+              No suggested friends found. Try searching for friends above!
+            </div>
+          )}
         </div>
       )}
     </div>

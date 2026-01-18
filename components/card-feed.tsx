@@ -460,13 +460,25 @@ export function CardFeed() {
       const deltaY = swipeOffsetY;
       const deltaTime = Date.now() - startTime.current;
 
-      // Check for vertical swipe (down) first
-      if (Math.abs(deltaY) > SWIPE_THRESHOLD && deltaY > 0 && swipeHistoryRef.current.length > 0) {
-        // Swipe down detected - undo last swipe
-        handleUndo();
-        setSwipeOffset(0);
-        setSwipeOffsetY(0);
-        setIsSwiping(false);
+      // Check for vertical swipe (up) first
+      if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > SWIPE_THRESHOLD && deltaY < 0) {
+        if (swipeHistoryRef.current.length > 0) {
+          // Swipe up detected - undo last swipe
+          handleUndo();
+          setSwipeOffset(0);
+          setSwipeOffsetY(0);
+          setIsSwiping(false);
+        } else {
+          // No history to undo - animate card flying up and return
+          setIsExiting(true);
+          setSwipeOffsetY(-1000);
+          setTimeout(() => {
+            setSwipeOffset(0);
+            setSwipeOffsetY(0);
+            setIsSwiping(false);
+            setIsExiting(false);
+          }, 300);
+        }
       } else if (Math.abs(deltaX) > Math.abs(deltaY)) {
         // Horizontal swipe
         const velocity = Math.abs(deltaX) / deltaTime;
@@ -487,10 +499,12 @@ export function CardFeed() {
           setIsSwiping(false);
         }
       } else {
-        // Reset position
-        setSwipeOffset(0);
-        setSwipeOffsetY(0);
+        // Reset position smoothly
         setIsSwiping(false);
+        setTimeout(() => {
+          setSwipeOffset(0);
+          setSwipeOffsetY(0);
+        }, 50);
       }
     }
 
@@ -609,10 +623,47 @@ export function CardFeed() {
   const opacity = 1 - Math.abs(swipeOffset) / 300;
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-[600px] px-4 py-8">
+    <div className="flex flex-col items-center justify-center min-h-[600px] px-4 py-8 relative">
+      {/* Faint glows at screen edges */}
+      <>
+        {/* Green glow from right edge (like) */}
+        <div 
+          className="fixed right-0 w-8 pointer-events-none z-10"
+          style={{
+            top: '50%',
+            transform: 'translateY(-50%)',
+            height: '700px',
+            maskImage: 'linear-gradient(to top, transparent 0%, black 15%, black 85%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to top, transparent 0%, black 15%, black 85%, transparent 100%)',
+            background: `linear-gradient(to left, 
+              rgba(34, 197, 94, ${isSwiping && swipeOffset > 0 ? Math.min(Math.abs(swipeOffset) / 200, 0.5) : 0.35}), 
+              rgba(34, 197, 94, ${isSwiping && swipeOffset > 0 ? Math.min(Math.abs(swipeOffset) / 200, 0.5) : 0.35}) 30%,
+              transparent 100%
+            )`,
+            opacity: isSwiping && swipeOffset > 0 ? Math.min(Math.abs(swipeOffset) / 100, 0.85) : 0.5
+          }}
+        />
+        {/* Red glow from left edge (dislike) */}
+        <div 
+          className="fixed left-0 w-8 pointer-events-none z-10"
+          style={{
+            top: '50%',
+            transform: 'translateY(-50%)',
+            height: '700px',
+            maskImage: 'linear-gradient(to top, transparent 0%, black 15%, black 85%, transparent 100%)',
+            WebkitMaskImage: 'linear-gradient(to top, transparent 0%, black 15%, black 85%, transparent 100%)',
+            background: `linear-gradient(to right, 
+              rgba(220, 38, 38, ${isSwiping && swipeOffset < 0 ? Math.min(Math.abs(swipeOffset) / 200, 0.5) : 0.35}), 
+              rgba(220, 38, 38, ${isSwiping && swipeOffset < 0 ? Math.min(Math.abs(swipeOffset) / 200, 0.5) : 0.35}) 30%,
+              transparent 100%
+            )`,
+            opacity: isSwiping && swipeOffset < 0 ? Math.min(Math.abs(swipeOffset) / 100, 0.85) : 0.5
+          }}
+        />
+      </>
       <div
         ref={cardRef}
-        className="relative w-full max-w-md"
+        className="relative w-full max-w-md z-30"
         style={{
           transform: `translate(${swipeOffset}px, ${swipeOffsetY}px) rotate(${rotation}deg)`,
           opacity: Math.max(opacity, 0.3),
@@ -631,10 +682,10 @@ export function CardFeed() {
           <div className="flex items-center gap-2 mb-4">
             <h2 className="text-xl font-bold flex-1 text-blue-900">{cardData.title}</h2>
             {currentCard.is_like === true && (
-              <Heart className="w-5 h-5 text-blue-600 fill-blue-600" />
+              <Heart className="w-5 h-5 text-red-600 fill-red-600" />
             )}
             {currentCard.is_like === false && (
-              <HeartOff className="w-5 h-5 text-blue-300" />
+              <HeartOff className="w-5 h-5 text-red-400" />
             )}
           </div>
           <div className="mb-6">
@@ -698,10 +749,10 @@ export function CardFeed() {
           <div className="flex items-center gap-2 mb-4">
             <h2 className="text-xl font-bold flex-1 text-blue-900">{cardData.title}</h2>
             {currentCard.is_like === true && (
-              <Heart className="w-5 h-5 text-blue-600 fill-blue-600" />
+              <Heart className="w-5 h-5 text-red-600 fill-red-600" />
             )}
             {currentCard.is_like === false && (
-              <HeartOff className="w-5 h-5 text-blue-300" />
+              <HeartOff className="w-5 h-5 text-red-400" />
             )}
           </div>
           <p className="text-blue-800 whitespace-pre-wrap mb-6">
@@ -726,10 +777,10 @@ export function CardFeed() {
           <div className="flex items-center gap-2 mb-4">
             <div className="flex-1"></div>
             {currentCard.is_like === true && (
-              <Heart className="w-5 h-5 text-blue-600 fill-blue-600" />
+              <Heart className="w-5 h-5 text-red-600 fill-red-600" />
             )}
             {currentCard.is_like === false && (
-              <HeartOff className="w-5 h-5 text-blue-300" />
+              <HeartOff className="w-5 h-5 text-red-400" />
             )}
           </div>
           <div 
@@ -798,10 +849,10 @@ export function CardFeed() {
           <div className="flex items-center gap-2 mb-4">
             <div className="flex-1"></div>
             {currentCard.is_like === true && (
-              <Heart className="w-5 h-5 text-blue-600 fill-blue-600" />
+              <Heart className="w-5 h-5 text-red-600 fill-red-600" />
             )}
             {currentCard.is_like === false && (
-              <HeartOff className="w-5 h-5 text-blue-300" />
+              <HeartOff className="w-5 h-5 text-red-400" />
             )}
           </div>
           <div className="mb-6">
@@ -845,22 +896,22 @@ export function CardFeed() {
                 <div className="relative">
                   {/* Main heart with pulse animation */}
                   <Heart 
-                    className="w-20 h-20 text-blue-600 fill-blue-600 drop-shadow-2xl"
+                    className="w-20 h-20 text-red-600 fill-red-600 drop-shadow-2xl"
                     style={{
-                      filter: "drop-shadow(0 0 10px rgba(37, 99, 235, 0.5))"
+                      filter: "drop-shadow(0 0 10px rgba(220, 38, 38, 0.5))"
                     }}
                   />
                   {/* External glow effect */}
                   <div className="absolute inset-0 flex items-center justify-center -z-10">
                     <Heart 
-                      className="w-28 h-28 text-blue-400 fill-blue-400 opacity-30"
+                      className="w-28 h-28 text-red-400 fill-red-400 opacity-30"
                       style={{
                         animation: "ping 1s cubic-bezier(0, 0, 0.2, 1) infinite"
                       }}
                     />
                   </div>
                 </div>
-                <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white px-6 py-2 rounded-full font-bold text-base shadow-lg">
+                <div className="bg-gradient-to-r from-red-500 to-red-600 text-white px-6 py-2 rounded-full font-bold text-base shadow-lg">
                   LIKE
                 </div>
               </div>
@@ -877,22 +928,22 @@ export function CardFeed() {
                 <div className="relative">
                   {/* Main broken heart */}
                   <HeartOff 
-                    className="w-20 h-20 text-blue-400 drop-shadow-2xl"
+                    className="w-20 h-20 text-red-400 drop-shadow-2xl"
                     style={{
-                      filter: "drop-shadow(0 0 10px rgba(96, 165, 250, 0.5))"
+                      filter: "drop-shadow(0 0 10px rgba(248, 113, 113, 0.5))"
                     }}
                   />
                   {/* External glow effect */}
                   <div className="absolute inset-0 flex items-center justify-center -z-10">
                     <HeartOff 
-                      className="w-28 h-28 text-blue-300 opacity-30"
+                      className="w-28 h-28 text-red-300 opacity-30"
                       style={{
                         animation: "ping 1s cubic-bezier(0, 0, 0.2, 1) infinite"
                       }}
                     />
                   </div>
                 </div>
-                <div className="bg-gradient-to-r from-blue-300 to-blue-400 text-white px-6 py-2 rounded-full font-bold text-base shadow-lg">
+                <div className="bg-gradient-to-r from-red-300 to-red-400 text-white px-6 py-2 rounded-full font-bold text-base shadow-lg">
                   DISLIKE
                 </div>
               </div>

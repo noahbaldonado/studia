@@ -113,6 +113,17 @@ export function PuzzleRush() {
     setIsFinished(false);
   };
 
+  const resetGame = () => {
+    setIsActive(false);
+    setIsFinished(false);
+    setTimeRemaining(PUZZLE_RUSH_DURATION);
+    setCorrectAnswers(0);
+    setWrongAnswers(0);
+    setCurrentQuizIndex(0);
+    setSelectedAnswer(null);
+    setShowResult(false);
+  };
+
   const endGame = async () => {
     setIsActive(false);
     setIsFinished(true);
@@ -210,7 +221,7 @@ export function PuzzleRush() {
             Wrong Answers: {wrongAnswers}/{MAX_WRONG_ANSWERS}
           </div>
         </div>
-        <Button onClick={startGame} className="rounded-full text-lg px-8 py-6">
+        <Button onClick={resetGame} className="rounded-full text-lg px-8 py-6">
           Play Again
         </Button>
       </div>
@@ -219,19 +230,32 @@ export function PuzzleRush() {
 
   return (
     <div className="flex flex-col items-center min-h-[600px] px-4 py-8">
-      {/* Header with timer and stats */}
-      <div className="w-full max-w-md mb-6">
-        <div className="flex justify-between items-center mb-4">
-          <div className="text-2xl font-bold text-blue-900">Puzzle Rush</div>
-          <div className={`text-xl font-bold ${timeRemaining <= 10 ? "text-blue-600" : "text-blue-900"}`}>
-            {timeRemaining}s
+      {/* Header with timer and stats - only show when game is active */}
+      {isActive && (
+        <div className="w-full max-w-md mb-6">
+          <div className="flex justify-between items-center mb-4">
+            <div className="text-2xl font-bold text-blue-900">Quiz Rush</div>
+            <div className={`text-xl font-bold ${timeRemaining <= 10 ? "text-blue-600" : "text-blue-900"}`}>
+              {timeRemaining}s
+            </div>
+          </div>
+          <div className="flex justify-between text-sm text-blue-600">
+            <div>Correct: {correctAnswers}</div>
+            <div>Wrong: {wrongAnswers}/{MAX_WRONG_ANSWERS}</div>
           </div>
         </div>
-        <div className="flex justify-between text-sm text-blue-600">
-          <div>Correct: {correctAnswers}</div>
-          <div>Wrong: {wrongAnswers}/{MAX_WRONG_ANSWERS}</div>
+      )}
+
+      {/* Game description - only show when not active and not finished */}
+      {!isActive && !isFinished && (
+        <div className="w-full max-w-md mt-8 mb-12 text-center">
+          <div className="text-lg text-blue-800 px-4">
+            <p>
+              Answer as many questions as you can in 60 seconds with a maximum of 3 wrong answers.
+            </p>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Quiz card - only show when game is active */}
       {currentQuiz && isActive && (
@@ -289,9 +313,9 @@ export function PuzzleRush() {
 
       {/* Start button if not active */}
       {!isActive && !isFinished && (
-        <div className="mt-48">
+        <div className="mt-32">
           <Button onClick={startGame} className="rounded-full text-lg px-8 py-6 h-auto">
-            Start Puzzle Rush
+            Start Quiz Rush
           </Button>
         </div>
       )}
