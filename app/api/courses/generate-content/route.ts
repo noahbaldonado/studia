@@ -1,7 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import pdfParse from "pdf-parse";
+import * as pdfParse from "pdf-parse";
 
 interface QuizItem {
   type: "quiz";
