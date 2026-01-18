@@ -49,6 +49,7 @@ interface Quiz {
   data: CardData;
   course_id: string;
   rating: number;
+  final_score?: number;
 }
 
 const SWIPE_THRESHOLD = 100;
@@ -87,60 +88,163 @@ export function CardFeed() {
         return;
       }
 
-      // Get user's subscribed course IDs
-      const { data: subscriptions, error: subscriptionError } = await supabase
-        .from("course_subscription")
-        .select("course_id")
-        .eq("user_id", user.id);
-
-      if (subscriptionError) {
-        console.error("Error fetching subscriptions:", subscriptionError);
-        setIsLoading(false);
-        return;
-      }
-
-      const subscribedCourseIds = subscriptions?.map((s) => s.course_id) || [];
-
-      if (subscribedCourseIds.length === 0) {
-        // No subscriptions, return empty
-        setCards([]);
-        setCurrentIndex(0);
-        setIsLoading(false);
-        return;
-      }
-
       // Clear existing cards before loading new ones
       setCards([]);
       
-      // Query quizzes from subscribed courses only
-      const { data, error } = await supabase
-        .from("quiz")
-        .select(`
-          id, 
-          data, 
-          course_id, 
-          rating,
-          quiz_tag (
-            tag (
-              name
-            )
-          )
-        `)
-        .in("course_id", subscribedCourseIds)
-        .order("id", { ascending: true })
-        .limit(20);
+      // Call RPC function to get scored quizzes filtered by subscriptions
+      // Score calculation: 0.5 * rating + 0.5 * sum(tag scores)
+      // Results are automatically ordered by final_score DESC
+      let data, error;
+      try {
+        const result = await supabase.rpc("get_scored_quizzes_with_tags", {
+          p_user_id: user.id,
+          p_limit: 50,
+        });
+        data = result.data;
+        error = result.error;
+        
+        // Log the full result for debugging
+        console.log("RPC result:", { data: result.data, error: result.error, hasData: !!result.data, hasError: !!result.error });
+      } catch (rpcError: any) {
+        console.error("RPC call exception:", rpcError);
+        console.error("Exception details:", {
+          message: rpcError?.message,
+          stack: rpcError?.stack,
+          name: rpcError?.name,
+        });
+        error = rpcError;
+      }
 
       if (error) {
-        console.error("Error loading cards:", error);
+        console.error("Error loading cards - full error object:", error);
+        console.error("Error type:", typeof error);
+        console.error("Error keys:", error ? Object.keys(error) : "error is null/undefined");
+        console.error("Error details:", {
+          message: error?.message,
+          code: error?.code,
+          details: error?.details,
+          hint: error?.hint,
+        });
+        
+        // Try to stringify the error
+        try {
+          console.error("Error as JSON:", JSON.stringify(error, null, 2));
+        } catch (e) {
+          console.error("Could not stringify error:", e);
+        }
+        
+        // Check error type
+        const isFunctionNotFound = 
+          error?.code === "42883" || 
+          (error?.message?.includes("does not exist") && !error?.message?.includes("type"));
+        
+        const isTypeMismatch = 
+          error?.code === "42804" ||
+          error?.message?.includes("does not match") ||
+          error?.message?.includes("type json") ||
+          error?.message?.includes("type jsonb");
+        
+        if (isTypeMismatch) {
+          console.error(
+            "Type mismatch error in database function. " +
+            "The function exists but has a type issue. " +
+            "Please run the updated SQL: sql/02_create_get_scored_quizzes_with_tags_function.sql " +
+            "Error: " + error?.message
+          );
+          // Still fall back to direct query
+        } else if (isFunctionNotFound) {
+          console.warn(
+            "Database function 'get_scored_quizzes_with_tags' not found. " +
+            "Falling back to direct query (no scoring). " +
+            "Run: sql/02_create_get_scored_quizzes_with_tags_function.sql"
+          );
+        } else {
+          console.error(
+            "Error calling database function: " + error?.message + 
+            " (Code: " + error?.code + "). " +
+            "Falling back to direct query (no scoring)."
+          );
+        }
+        
+        // Fall back to direct query for any error
+        if (isFunctionNotFound || isTypeMismatch || error) {
+          
+          // Fallback to direct query with subscription filtering
+          const { data: subscriptions } = await supabase
+            .from("course_subscription")
+            .select("course_id")
+            .eq("user_id", user.id);
+
+          const subscribedCourseIds = subscriptions?.map((s) => s.course_id) || [];
+
+          if (subscribedCourseIds.length === 0) {
+            setCards([]);
+            setCurrentIndex(0);
+            setIsLoading(false);
+            return;
+          }
+
+          const { data: fallbackData, error: fallbackError } = await supabase
+            .from("quiz")
+            .select(`
+              id, 
+              data, 
+              course_id, 
+              rating,
+              quiz_tag (
+                tag (
+                  name
+                )
+              )
+            `)
+            .in("course_id", subscribedCourseIds)
+            .order("id", { ascending: true })
+            .limit(20);
+
+          if (fallbackError) {
+            console.error("Fallback query error:", fallbackError);
+            setIsLoading(false);
+            return;
+          }
+
+          if (fallbackData) {
+            const cardsWithTags = fallbackData.map((quiz: any) => {
+              const tags = (quiz.quiz_tag || [])
+                .map((qt: any) => qt.tag?.name)
+                .filter((name: string | undefined): name is string => !!name);
+              
+              const cardData = quiz.data as CardData;
+              if (tags.length > 0) {
+                cardData.suggested_topic_tags = tags;
+              }
+              
+              return {
+                id: quiz.id,
+                data: cardData,
+                course_id: quiz.course_id,
+                rating: quiz.rating,
+              } as Quiz;
+            });
+            
+            setCards(cardsWithTags);
+            setCurrentIndex(0);
+            setIsLoading(false);
+            return;
+          }
+        }
+        
+        setIsLoading(false);
         return;
       }
 
       if (data) {
-        // Reconstruct cards with tags from join tables
+        // Map the RPC function response to Quiz interface
+        // Tags come as JSONB array from the function
         const cardsWithTags = data.map((quiz: any) => {
-          const tags = (quiz.quiz_tag || [])
-            .map((qt: any) => qt.tag?.name)
-            .filter((name: string | undefined): name is string => !!name);
+          // Extract tag names from the JSONB tags array
+          const tags = Array.isArray(quiz.tags)
+            ? quiz.tags.map((tag: any) => tag.name).filter((name: string | undefined): name is string => !!name)
+            : [];
           
           // Add tags back to data for backward compatibility
           const cardData = quiz.data as CardData;
@@ -153,10 +257,15 @@ export function CardFeed() {
             data: cardData,
             course_id: quiz.course_id,
             rating: quiz.rating,
+            final_score: quiz.final_score,
           } as Quiz;
         });
         
         setCards(cardsWithTags);
+        setCurrentIndex(0);
+      } else {
+        // No data returned (user might have no subscriptions or no quizzes)
+        setCards([]);
         setCurrentIndex(0);
       }
     } catch (error) {
