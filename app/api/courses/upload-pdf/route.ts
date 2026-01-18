@@ -215,6 +215,15 @@ Generate the content now:`;
             validContent.push(item);
           }
 
+          // Get user rating from profile table
+          const { data: profileData } = await supabase
+            .from("profile")
+            .select("rating")
+            .eq("id", user.id)
+            .single();
+
+          const userRating = profileData?.rating || 7.5;
+
           // Save each valid item to the quiz table
           for (const item of validContent) {
             try {
@@ -222,6 +231,9 @@ Generate the content now:`;
                 .from("quiz")
                 .insert({
                   data: item,
+                  rating: userRating,
+                  course_id: courseId,
+                  user_id: user.id,
                 });
 
               if (quizInsertError) {
