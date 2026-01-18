@@ -1,7 +1,6 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import * as pdfParse from "pdf-parse";
 
 interface QuizItem {
   type: "quiz";
@@ -98,6 +97,10 @@ export async function POST(request: NextRequest) {
     let pdfText: string;
     
     try {
+      // Dynamic import for pdf-parse (ESM module)
+      const pdfParseModule = await import("pdf-parse");
+      // @ts-expect-error - pdf-parse is callable but TypeScript types don't reflect this
+      const pdfParse = pdfParseModule.default || pdfParseModule;
       const pdfData = await pdfParse(buffer);
       pdfText = pdfData.text;
       
