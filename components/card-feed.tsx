@@ -699,9 +699,9 @@ export function CardFeed() {
                 let bgColor = "bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200";
                 if (showResult) {
                   if (isCorrect) {
-                    bgColor = "bg-blue-600 text-white border-blue-700";
+                    bgColor = "bg-green-500 text-white border-green-600";
                   } else if (isSelected && !isCorrect) {
-                    bgColor = "bg-blue-300 text-white border-blue-400";
+                    bgColor = "bg-red-300 text-white border-red-400";
                   }
                 }
 
@@ -743,7 +743,7 @@ export function CardFeed() {
         </div>
       ) : cardData.type === "sticky_note" ? (
         <div
-          className="bg-gradient-to-br from-blue-50 via-white to-blue-100 rounded-2xl shadow-xl p-6 border-2 border-blue-300"
+          className="bg-yellow-50 rounded-2xl shadow-xl p-6 border-2 border-blue-200 hover:bg-yellow-100 transition-colors"
           style={{ minHeight: "400px" }}
         >
           <div className="flex items-center gap-2 mb-4">
@@ -762,7 +762,7 @@ export function CardFeed() {
           {/* Comments section */}
           <QuizComments key={currentCard.id} quizId={currentCard.id} />
 
-          <div className="mt-6 pt-4 border-t border-blue-300">
+          <div className="mt-6 pt-4 border-t border-blue-200">
             <Link
               href={`/protected/courses/${currentCard.course_id}`}
               className="text-blue-600 hover:text-blue-800 font-semibold text-sm inline-flex items-center gap-1"

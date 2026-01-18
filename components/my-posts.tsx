@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { FileText, BookOpen, StickyNote, Trash2, Edit2, Loader2, X, Check } from "lucide-react";
+import { Trash2, Edit2, Loader2, X, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 interface PostData {
@@ -184,7 +184,7 @@ export function MyPosts({ userId }: MyPostsProps) {
                       type="text"
                       value={editData.title || ""}
                       onChange={(e) => setEditData({ ...editData, title: e.target.value })}
-                      className="w-full px-3 py-2 border border-zinc-300 rounded-lg"
+                      className="w-full px-3 py-2 border border-blue-300 rounded-lg bg-white text-blue-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
                     />
                   </div>
                   <div>
@@ -197,7 +197,7 @@ export function MyPosts({ userId }: MyPostsProps) {
                           content: { ...editData.content, question: e.target.value },
                         })
                       }
-                      className="w-full px-3 py-2 border border-zinc-300 rounded-lg"
+                      className="w-full px-3 py-2 border border-blue-300 rounded-lg bg-white text-blue-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
                       rows={2}
                     />
                   </div>
@@ -214,6 +214,7 @@ export function MyPosts({ userId }: MyPostsProps) {
                               content: { ...editData.content, correct_answer: idx },
                             })
                           }
+                          className="h-4 w-4 text-blue-600 focus:ring-2 focus:ring-blue-500 cursor-pointer flex-shrink-0"
                         />
                         <input
                           type="text"
@@ -226,7 +227,11 @@ export function MyPosts({ userId }: MyPostsProps) {
                               content: { ...editData.content, options: newOptions },
                             });
                           }}
-                          className="flex-1 px-3 py-2 border border-zinc-300 rounded-lg"
+                          className={`flex-1 px-3 py-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-blue-900 ${
+                            editData.content.correct_answer === idx
+                              ? "bg-green-50 border-2 border-green-300"
+                              : "bg-white border border-blue-300"
+                          }`}
                         />
                       </div>
                     ))}
@@ -261,13 +266,9 @@ export function MyPosts({ userId }: MyPostsProps) {
               className="p-4 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 transition-colors"
             >
               <div className="flex items-start gap-3">
-                <div className="rounded-lg bg-blue-100 p-2 flex-shrink-0">
-                  <FileText className="h-4 w-4 text-blue-600" />
-                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-semibold text-zinc-900">{postData.title}</h3>
-                    <span className="text-xs text-zinc-500">Quiz</span>
                   </div>
                   <p className="text-sm text-zinc-700 mb-2">{postData.content.question}</p>
                   {confirmDeleteId === post.id && (
@@ -350,7 +351,7 @@ export function MyPosts({ userId }: MyPostsProps) {
                           content: { ...editData.content, question: e.target.value },
                         })
                       }
-                      className="w-full px-3 py-2 border border-zinc-300 rounded-lg"
+                      className="w-full px-3 py-2 border border-blue-300 rounded-lg bg-white text-blue-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
                       rows={2}
                     />
                   </div>
@@ -364,7 +365,7 @@ export function MyPosts({ userId }: MyPostsProps) {
                           content: { ...editData.content, answer: e.target.value },
                         })
                       }
-                      className="w-full px-3 py-2 border border-zinc-300 rounded-lg"
+                      className="w-full px-3 py-2 border border-blue-300 rounded-lg bg-white text-blue-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
                       rows={2}
                     />
                   </div>
@@ -398,9 +399,6 @@ export function MyPosts({ userId }: MyPostsProps) {
               className="p-4 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 transition-colors"
             >
               <div className="flex items-start gap-3">
-                <div className="rounded-lg bg-purple-100 p-2 flex-shrink-0">
-                  <BookOpen className="h-4 w-4 text-purple-600" />
-                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-semibold text-zinc-900">Flashcard</h3>
@@ -440,16 +438,6 @@ export function MyPosts({ userId }: MyPostsProps) {
                   )}
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleEdit(post);
-                    }}
-                    className="p-2 hover:bg-blue-50 rounded-lg transition-colors"
-                    aria-label="Edit"
-                  >
-                    <Edit2 className="h-4 w-4 text-blue-600" />
-                  </button>
                   {confirmDeleteId !== post.id && (
                     <>
                       <button
@@ -497,7 +485,7 @@ export function MyPosts({ userId }: MyPostsProps) {
                       type="text"
                       value={editData.title || ""}
                       onChange={(e) => setEditData({ ...editData, title: e.target.value })}
-                      className="w-full px-3 py-2 border border-zinc-300 rounded-lg"
+                      className="w-full px-3 py-2 border border-blue-300 rounded-lg bg-white text-blue-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
                     />
                   </div>
                   <div>
@@ -505,7 +493,7 @@ export function MyPosts({ userId }: MyPostsProps) {
                     <textarea
                       value={editData.content || ""}
                       onChange={(e) => setEditData({ ...editData, content: e.target.value })}
-                      className="w-full px-3 py-2 border border-zinc-300 rounded-lg"
+                      className="w-full px-3 py-2 border border-blue-300 rounded-lg bg-white text-blue-900 focus:outline-none focus:ring-1 focus:ring-blue-400"
                       rows={4}
                     />
                   </div>
@@ -539,13 +527,9 @@ export function MyPosts({ userId }: MyPostsProps) {
               className="p-4 rounded-lg border border-zinc-200 bg-yellow-50 hover:bg-yellow-100 transition-colors"
             >
               <div className="flex items-start gap-3">
-                <div className="rounded-lg bg-yellow-200 p-2 flex-shrink-0">
-                  <StickyNote className="h-4 w-4 text-yellow-700" />
-                </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
                     <h3 className="font-semibold text-zinc-900">{postData.title}</h3>
-                    <span className="text-xs text-zinc-500">Note</span>
                   </div>
                   <p className="text-sm text-zinc-700">{postData.content}</p>
                   {confirmDeleteId === post.id && (
