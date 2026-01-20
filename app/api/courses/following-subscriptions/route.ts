@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { formatUsername } from "@/lib/utils";
 
 export const dynamic = 'force-dynamic';
 
@@ -54,7 +55,7 @@ export async function GET(request: NextRequest) {
     const allFollowingUserIds = [...new Set(followingIds)];
     const { data: profiles, error: profileError } = await supabase
       .from("profile")
-      .select("id, metadata")
+      .select("id, metadata, username")
       .in("id", allFollowingUserIds);
 
     if (profileError) {
@@ -64,11 +65,14 @@ export async function GET(request: NextRequest) {
 
     const profileMap = new Map(
       (profiles || []).map((p) => {
-        const metadata = p.metadata as any;
+        const metadata = p.metadata as { name?: string; email?: string; [key: string]: unknown };
+        const displayName = p.username
+          ? formatUsername(p.username)
+          : metadata?.name || `User ${p.id.substring(0, 8)}`;
         return [
           p.id,
           {
-            name: metadata?.name || `User ${p.id.substring(0, 8)}`,
+            name: displayName,
             email: metadata?.email || null,
           },
         ];

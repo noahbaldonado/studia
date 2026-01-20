@@ -64,8 +64,7 @@ export function PuzzleRush() {
 
       // Filter to only quiz type
       const quizOnly = (result.data || []).filter((quiz: Quiz) => {
-        const data = quiz.data as any;
-        return data.type === "quiz";
+        return 'type' in quiz.data && quiz.data.type === "quiz";
       });
 
       setQuizzes(quizOnly);
@@ -197,7 +196,7 @@ export function PuzzleRush() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-96">
-        <div className="text-lg text-blue-600">Loading quizzes...</div>
+        <div className="text-base text-[hsl(var(--muted-foreground))]">Loading quizzes...</div>
       </div>
     );
   }
@@ -205,7 +204,7 @@ export function PuzzleRush() {
   if (quizzes.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-96 gap-4">
-        <div className="text-lg font-semibold text-blue-900">No quizzes available</div>
+        <div className="text-base font-semibold text-foreground">No quizzes available</div>
         <Button onClick={loadQuizzes}>Reload</Button>
       </div>
     );
@@ -214,14 +213,14 @@ export function PuzzleRush() {
   if (isFinished) {
     return (
       <div className="flex flex-col items-center justify-center h-96 gap-6 px-4">
-        <div className="text-3xl font-bold text-blue-900">Game Over!</div>
+        <div className="text-3xl font-bold text-foreground">Game Over!</div>
         <div className="text-center">
-          <div className="text-2xl font-semibold mb-2 text-blue-800">Score: {correctAnswers}</div>
-          <div className="text-lg text-blue-600">
+          <div className="text-2xl font-semibold mb-2 text-foreground">Score: {correctAnswers}</div>
+          <div className="text-base text-[hsl(var(--muted-foreground))]">
             Wrong Answers: {wrongAnswers}/{MAX_WRONG_ANSWERS}
           </div>
         </div>
-        <Button onClick={resetGame} className="rounded-full text-lg px-8 py-6">
+        <Button onClick={resetGame} className="text-base px-8 py-6 h-auto">
           Play Again
         </Button>
       </div>
@@ -234,12 +233,12 @@ export function PuzzleRush() {
       {isActive && (
         <div className="w-full max-w-md mb-6">
           <div className="flex justify-between items-center mb-4">
-            <div className="text-2xl font-bold text-blue-900">Quiz Rush</div>
-            <div className={`text-xl font-bold ${timeRemaining <= 10 ? "text-blue-600" : "text-blue-900"}`}>
+            <div className="text-2xl font-bold text-foreground">Quiz Rush</div>
+            <div className={`text-xl font-bold ${timeRemaining <= 10 ? "text-[hsl(var(--destructive))]" : "text-[hsl(var(--primary))]"}`}>
               {timeRemaining}s
             </div>
           </div>
-          <div className="flex justify-between text-sm text-blue-600">
+          <div className="flex justify-between text-xs text-[hsl(var(--muted-foreground))]">
             <div>Correct: {correctAnswers}</div>
             <div>Wrong: {wrongAnswers}/{MAX_WRONG_ANSWERS}</div>
           </div>
@@ -249,7 +248,7 @@ export function PuzzleRush() {
       {/* Game description - only show when not active and not finished */}
       {!isActive && !isFinished && (
         <div className="w-full max-w-md mt-8 mb-12 text-center">
-          <div className="text-lg text-blue-800 px-4">
+          <div className="text-base text-[hsl(var(--muted-foreground))] px-4">
             <p>
               Answer as many questions as you can in 60 seconds with a maximum of 3 wrong answers.
             </p>
@@ -260,29 +259,25 @@ export function PuzzleRush() {
       {/* Quiz card - only show when game is active */}
       {currentQuiz && isActive && (
         <div className="w-full max-w-md">
-          <div className="bg-gradient-to-br from-white to-blue-50 rounded-2xl shadow-xl p-6 border-2 border-blue-200">
-            <h2 className="text-xl font-bold mb-4 text-blue-900">{currentQuiz.data.title}</h2>
+          <div className="bg-[hsl(var(--card))] shadow-xl p-6 border-2 border-[hsl(var(--primary))] shadow-[0_0_20px_rgba(0,255,255,0.2)]">
+            <h2 className="text-xl font-bold mb-4 text-foreground">{currentQuiz.data.title}</h2>
             <div className="mb-6">
-              <p className="text-blue-800 mb-4">{currentQuiz.data.content.question}</p>
+              <p className="text-foreground/90 mb-4">{currentQuiz.data.content.question}</p>
               <div className="space-y-2">
                 {currentQuiz.data.content.options.map((option, index) => {
                   const isSelected = selectedAnswer === index;
                   const isCorrect = index === currentQuiz.data.content.correct_answer;
 
-                  let bgColor = "bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200";
+                  let bgColor = "bg-[hsl(var(--secondary))] hover:bg-[hsl(var(--muted))] text-foreground border border-[hsl(var(--border))]";
                   
                   if (showResult) {
                     if (isCorrect) {
-                      bgColor = "bg-green-500 text-white border-green-600";
+                      bgColor = "bg-[hsl(var(--accent))] text-[hsl(var(--background))] border-[hsl(var(--accent))]";
                     } else if (isSelected && !isCorrect) {
-                      bgColor = "bg-red-300 text-white border-red-400";
+                      bgColor = "bg-[hsl(var(--destructive))] text-[hsl(var(--background))] border-[hsl(var(--destructive))]";
                     } else {
-                      // Reset to default for non-selected, non-correct options
-                      bgColor = "bg-blue-50 text-blue-900 border border-blue-200";
+                      bgColor = "bg-[hsl(var(--secondary))] text-foreground border border-[hsl(var(--border))]";
                     }
-                  } else {
-                    // When not showing results, ensure all options have the same default color
-                    bgColor = "bg-blue-50 hover:bg-blue-100 text-blue-900 border border-blue-200";
                   }
 
                   return (
@@ -292,15 +287,15 @@ export function PuzzleRush() {
                         handleAnswerClick(index, currentQuiz.data.content.correct_answer)
                       }
                       disabled={selectedAnswer !== null || !isActive}
-                      className={`w-full text-left p-4 rounded-lg transition-all ${bgColor} ${
+                      className={`w-full text-left p-4 transition-all ${bgColor} ${
                         selectedAnswer === null && isActive
-                          ? "cursor-pointer active:scale-95"
+                          ? "cursor-pointer active:opacity-80"
                           : "cursor-not-allowed opacity-60"
                       }`}
                     >
                       {option}
                       {showResult && isCorrect && (
-                        <CheckCircle2 className="inline-block ml-2 w-5 h-5" />
+                        <CheckCircle2 className="inline-block ml-2 h-5 w-5" />
                       )}
                     </button>
                   );

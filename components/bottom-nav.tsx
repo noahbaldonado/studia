@@ -14,76 +14,76 @@ export function BottomNav() {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 border-t border-blue-200 bg-gradient-to-t from-white via-blue-50 to-white backdrop-blur-sm"
-      style={{ paddingBottom: "max(0.75rem, env(safe-area-inset-bottom))" }}
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-[hsl(var(--border))] bg-[hsl(var(--card))]"
+      style={{ paddingBottom: "max(0.5rem, env(safe-area-inset-bottom))" }}
     >
-      <div className="flex items-center justify-around py-3">
+      <div className="flex items-center justify-around py-2">
         <Link
           href="/protected"
-          className="flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 px-3 transition-colors active:opacity-70"
+          className="flex min-h-[40px] min-w-[40px] flex-col items-center justify-center gap-0.5 px-2.5 transition-colors active:opacity-70"
           aria-label="Home"
         >
           <Home
-            className={`h-6 w-6 ${isHome ? "text-blue-600" : "text-blue-300"}`}
+            className={`h-5 w-5 ${isHome ? "text-[hsl(var(--primary))]" : "text-[hsl(var(--muted-foreground))]"}`}
           />
           <span
-            className={`text-xs font-medium ${isHome ? "text-blue-600" : "text-blue-300"}`}
+            className={`text-xs font-medium ${isHome ? "text-[hsl(var(--primary))]" : "text-[hsl(var(--muted-foreground))]"}`}
           >
             Home
           </span>
         </Link>
         <Link
           href="/protected/courses"
-          className="flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 px-3 transition-colors active:opacity-70"
+          className="flex min-h-[40px] min-w-[40px] flex-col items-center justify-center gap-0.5 px-2.5 transition-colors active:opacity-70"
           aria-label="Courses"
         >
           <BookOpen
-            className={`h-6 w-6 ${isCourses ? "text-blue-600" : "text-blue-300"}`}
+            className={`h-5 w-5 ${isCourses ? "text-[hsl(var(--primary))]" : "text-[hsl(var(--muted-foreground))]"}`}
           />
           <span
-            className={`text-xs font-medium ${isCourses ? "text-blue-600" : "text-blue-300"}`}
+            className={`text-xs font-medium ${isCourses ? "text-[hsl(var(--primary))]" : "text-[hsl(var(--muted-foreground))]"}`}
           >
             Courses
           </span>
         </Link>
         <Link
           href="/protected/puzzle-rush"
-          className="flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 px-3 transition-colors active:opacity-70"
+          className="flex min-h-[40px] min-w-[40px] flex-col items-center justify-center gap-0.5 px-2.5 transition-colors active:opacity-70"
           aria-label="Quiz Rush"
         >
           <Timer
-            className={`h-6 w-6 ${isPuzzleRush ? "text-blue-600" : "text-blue-300"}`}
+            className={`h-5 w-5 ${isPuzzleRush ? "text-[hsl(var(--primary))]" : "text-[hsl(var(--muted-foreground))]"}`}
           />
           <span
-            className={`text-xs font-medium ${isPuzzleRush ? "text-blue-600" : "text-blue-300"}`}
+            className={`text-xs font-medium ${isPuzzleRush ? "text-[hsl(var(--primary))]" : "text-[hsl(var(--muted-foreground))]"}`}
           >
             Quiz Rush
           </span>
         </Link>
         <Link
           href="/protected/friends"
-          className="flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 px-3 transition-colors active:opacity-70"
+          className="flex min-h-[40px] min-w-[44px] flex-col items-center justify-center gap-0.5 px-2.5 transition-colors active:opacity-70"
           aria-label="Friends"
         >
           <Users
-            className={`h-6 w-6 ${isFriends ? "text-blue-600" : "text-blue-300"}`}
+            className={`h-5 w-5 ${isFriends ? "text-[hsl(var(--primary))]" : "text-[hsl(var(--muted-foreground))]"}`}
           />
           <span
-            className={`text-xs font-medium ${isFriends ? "text-blue-600" : "text-blue-300"}`}
+            className={`text-xs font-medium ${isFriends ? "text-[hsl(var(--primary))]" : "text-[hsl(var(--muted-foreground))]"}`}
           >
             Friends
           </span>
         </Link>
         <Link
           href="/protected/profile"
-          className="flex min-h-[44px] min-w-[44px] flex-col items-center justify-center gap-0.5 px-3 transition-colors active:opacity-70"
+          className="flex min-h-[40px] min-w-[40px] flex-col items-center justify-center gap-0.5 px-2.5 transition-colors active:opacity-70"
           aria-label="Profile"
         >
           <User
-            className={`h-6 w-6 ${isProfile ? "text-blue-600" : "text-blue-300"}`}
+            className={`h-5 w-5 ${isProfile ? "text-[hsl(var(--primary))]" : "text-[hsl(var(--muted-foreground))]"}`}
           />
           <span
-            className={`text-xs font-medium ${isProfile ? "text-blue-600" : "text-blue-300"}`}
+            className={`text-xs font-medium ${isProfile ? "text-[hsl(var(--primary))]" : "text-[hsl(var(--muted-foreground))]"}`}
           >
             Profile
           </span>

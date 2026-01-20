@@ -53,8 +53,9 @@ export async function DELETE(
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error("Error in DELETE post route:", error);
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    console.error("Error in DELETE post route:", err.message || error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -123,8 +124,9 @@ export async function PUT(
     }
 
     return NextResponse.json({ success: true });
-  } catch (error: any) {
-    console.error("Error in PUT post route:", error);
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    console.error("Error in PUT post route:", err.message || error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

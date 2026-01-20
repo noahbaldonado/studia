@@ -91,10 +91,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Extract text from PDF
+    // Extract text and page count from PDF
     const arrayBuffer = await pdfFile.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
     let pdfText: string;
+    let pdfPageCount: number;
     
     try {
       // Dynamic import for pdf-parse (ESM module)
@@ -103,6 +104,7 @@ export async function POST(request: NextRequest) {
       const pdfParse = pdfParseModule.default || pdfParseModule;
       const pdfData = await pdfParse(buffer);
       pdfText = pdfData.text;
+      pdfPageCount = pdfData.numpages || 1;
       
       if (!pdfText || pdfText.trim().length === 0) {
         return NextResponse.json(
@@ -118,6 +120,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Calculate target number of items based on PDF size
+    // Roughly 1-1.5 items per page, but scale appropriately
+    // For small PDFs (1-5 pages): 5-10 items
+    // For medium PDFs (6-20 pages): 10-25 items  
+    // For large PDFs (21+ pages): 25-50 items (capped at 50)
+    const targetItems = Math.min(
+      Math.max(5, Math.round(pdfPageCount * 1.2)),
+      50
+    );
+
+    // Distribute items across content types
+    // 60% quizzes, 25% flashcards, 10% sticky notes, 5% polls
+    const quizzes = Math.max(1, Math.round(targetItems * 0.6));
+    const flashcards = Math.max(1, Math.round(targetItems * 0.25));
+    const stickyNotes = Math.max(1, Math.round(targetItems * 0.1));
+    const polls = Math.max(0, Math.min(2, Math.round(targetItems * 0.05)));
+
     // Get Gemini API key from environment
     const geminiApiKey = process.env.GEMINI_API_KEY;
     if (!geminiApiKey) {
@@ -132,16 +151,17 @@ export async function POST(request: NextRequest) {
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
     // Create prompt for Gemini
-    const prompt = `Given the contents of the following PDF, generate educational content in JSON format.
+    const prompt = `Given the contents of the following PDF (${pdfPageCount} pages), generate approximately ${targetItems} educational content items in JSON format.
 
 PDF Content:
 ${pdfText.substring(0, 50000)} ${pdfText.length > 50000 ? "...[truncated]" : ""}
 
-Requirements:
-1. Generate 2-3 sticky-note-style notes: focus on random, interesting, or high-yield facts from the PDF that are useful for quick review.
-2. Generate 2-3 flashcards: specific front-back style (question/answer) for active recall.
-3. Generate 1-5 multiple-choice quizzes (MCQs): exactly 4 options with one correct answer.
-4. All content must be directly derived from the PDF.
+Requirements (generate approximately ${targetItems} items total):
+1. Generate ${stickyNotes} sticky-note-style notes: focus on random, interesting, or high-yield facts from the PDF that are useful for quick review.
+2. Generate ${flashcards} flashcards: specific front-back style (question/answer) for active recall.
+3. Generate ${quizzes} multiple-choice quizzes (MCQs): exactly 4 options with one correct answer.
+4. Generate ${polls} opinion-based polls: ONLY if there are subjective topics suitable for preference-based questions. If not suitable, generate 0 polls.
+5. All content must be directly derived from the PDF.
 
 Output format (JSON array):
 [
@@ -176,11 +196,20 @@ Output format (JSON array):
       "answer": "Detailed explanatory answer"
     },
     "suggested_topic_tags": ["tag1"]
+  },
+  {
+    "type": "poll",
+    "content": {
+      "question": "Opinion-based question that asks for preference or subjective view?",
+      "options": ["Option 1", "Option 2", "Option 3"]
+    },
+    "suggested_topic_tags": ["tag1"]
   }
 ]
 
 Rules:
-- correct_answer is the index (0-3).
+- correct_answer is the index (0-3) for quizzes only.
+- Polls should have 2-5 options and ask for opinions/preferences, not factual answers.
 - Return ONLY valid JSON, no markdown formatting or code blocks.
 
 Generate the content now:`;
@@ -214,7 +243,7 @@ Generate the content now:`;
         if (!itemType) {
           throw new Error("Item missing type");
         }
-        const validTypes = ["quiz", "sticky_note", "flashcard"];
+        const validTypes = ["quiz", "sticky_note", "flashcard", "poll", "open_question"];
         if (!validTypes.includes(itemType)) {
           throw new Error(`Invalid type: ${itemType}`);
         }
@@ -247,7 +276,7 @@ Generate the content now:`;
         { 
           error: "Failed to parse Gemini response",
           details: parseError instanceof Error ? parseError.message : "Unknown error",
-          raw_response: text.substring(0, 500) // Include first 500 chars for debugging
+          raw_response: text.substring(0, 500)
         },
         { status: 500 }
       );

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { formatUsername } from "@/lib/utils";
 
 export const dynamic = 'force-dynamic';
 
@@ -37,7 +38,7 @@ export async function GET(request: NextRequest) {
       // Get profile data for following users
       const { data: profiles, error: profileError } = await supabase
         .from("profile")
-        .select("id, metadata")
+        .select("id, metadata, username")
         .in("id", followingIds);
 
       if (profileError) {
@@ -46,10 +47,13 @@ export async function GET(request: NextRequest) {
       }
 
       const users = (profiles || []).map((profile) => {
-        const metadata = profile.metadata as any;
+        const metadata = profile.metadata as { name?: string; email?: string; [key: string]: unknown };
+        const displayName = profile.username
+          ? formatUsername(profile.username)
+          : metadata?.name || `User ${profile.id.substring(0, 8)}`;
         return {
           id: profile.id,
-          name: metadata?.name || `User ${profile.id.substring(0, 8)}`,
+          name: displayName,
           email: metadata?.email || null,
         };
       });
@@ -76,7 +80,7 @@ export async function GET(request: NextRequest) {
       // Get profile data for followers
       const { data: profiles, error: profileError } = await supabase
         .from("profile")
-        .select("id, metadata")
+        .select("id, metadata, username")
         .in("id", followerIds);
 
       if (profileError) {
@@ -85,10 +89,13 @@ export async function GET(request: NextRequest) {
       }
 
       const users = (profiles || []).map((profile) => {
-        const metadata = profile.metadata as any;
+        const metadata = profile.metadata as { name?: string; email?: string; [key: string]: unknown };
+        const displayName = profile.username
+          ? formatUsername(profile.username)
+          : metadata?.name || `User ${profile.id.substring(0, 8)}`;
         return {
           id: profile.id,
-          name: metadata?.name || `User ${profile.id.substring(0, 8)}`,
+          name: displayName,
           email: metadata?.email || null,
         };
       });

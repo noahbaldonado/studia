@@ -33,10 +33,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Ottieni il rating corrente e user_id (quiz creator)
+    // Get current likes/dislikes and user_id (quiz creator)
     const { data: currentQuiz, error: fetchError } = await supabase
       .from("quiz")
-      .select("rating, user_id")
+      .select("likes, dislikes, user_id")
       .eq("id", quizId)
       .single();
 
@@ -74,7 +74,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({
           success: true,
           quizId,
-          newRating: currentQuiz.rating,
+          likes: currentQuiz.likes || 0,
+          dislikes: currentQuiz.dislikes || 0,
           message: "No change - already " + (isLike ? "liked" : "disliked"),
         });
       } else {
@@ -86,24 +87,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Update or create quiz_interaction record
+    // Like/dislike sets interaction score to 10 (capped)
     if (existingInteraction) {
       if (isUndo) {
-        // Remove interaction (undo)
-        const { error: deleteError } = await supabase
-          .from("quiz_interaction")
-          .delete()
-          .eq("quiz_id", quizId)
-          .eq("user_id", user.id);
-
-        if (deleteError) {
-          console.error("Error removing quiz interaction:", deleteError);
-          // Continue with rating update
-        }
-      } else if (existingInteraction.is_like !== isLike) {
-        // Update interaction (change from like to dislike or vice versa)
+        // Remove interaction (undo) - but keep interaction_score at current level
+        // Don't delete, just remove is_like and keep the score
         const { error: updateInteractionError } = await supabase
           .from("quiz_interaction")
-          .update({ is_like: isLike })
+          .update({ is_like: null })
           .eq("quiz_id", quizId)
           .eq("user_id", user.id);
 
@@ -111,16 +102,44 @@ export async function POST(request: NextRequest) {
           console.error("Error updating quiz interaction:", updateInteractionError);
           // Continue with rating update
         }
+      } else if (existingInteraction.is_like !== isLike) {
+        // Update interaction (change from like to dislike or vice versa)
+        // Set interaction_score to 10 (max) since they're interacting
+        const { error: updateInteractionError } = await supabase
+          .from("quiz_interaction")
+          .update({ 
+            is_like: isLike,
+            interaction_score: 10  // Max score for like/dislike
+          })
+          .eq("quiz_id", quizId)
+          .eq("user_id", user.id);
+
+        if (updateInteractionError) {
+          console.error("Error updating quiz interaction:", updateInteractionError);
+          // Continue with rating update
+        }
+      } else {
+        // Same action - ensure score is at 10
+        const { error: updateInteractionError } = await supabase
+          .from("quiz_interaction")
+          .update({ interaction_score: 10 })
+          .eq("quiz_id", quizId)
+          .eq("user_id", user.id);
+
+        if (updateInteractionError) {
+          console.error("Error updating quiz interaction score:", updateInteractionError);
+        }
       }
       // If same action (existingInteraction.is_like === isLike), we already returned above
     } else {
-      // Create new interaction
+      // Create new interaction with score of 10 for like/dislike
       const { error: insertInteractionError } = await supabase
         .from("quiz_interaction")
         .insert({
           quiz_id: quizId,
           user_id: user.id,
           is_like: isLike,
+          interaction_score: 10,  // Max score for like/dislike
         });
 
       if (insertInteractionError) {
@@ -129,21 +148,49 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Calcola il nuovo rating
-    const newRating = (currentQuiz.rating || 0) + actualRatingChange;
+    // Calculate new likes/dislikes counts
+    let newLikes = currentQuiz.likes || 0;
+    let newDislikes = currentQuiz.dislikes || 0;
 
-    // Aggiorna il rating nel database
+    if (isUndo) {
+      // Removing interaction
+      if (existingInteraction?.is_like === true) {
+        newLikes = Math.max(0, newLikes - 1);
+      } else if (existingInteraction?.is_like === false) {
+        newDislikes = Math.max(0, newDislikes - 1);
+      }
+    } else if (existingInteraction) {
+      // Changing from like to dislike or vice versa
+      if (existingInteraction.is_like === true && isLike === false) {
+        // Was like, now dislike
+        newLikes = Math.max(0, newLikes - 1);
+        newDislikes = newDislikes + 1;
+      } else if (existingInteraction.is_like === false && isLike === true) {
+        // Was dislike, now like
+        newDislikes = Math.max(0, newDislikes - 1);
+        newLikes = newLikes + 1;
+      }
+    } else {
+      // New interaction
+      if (isLike) {
+        newLikes = newLikes + 1;
+      } else {
+        newDislikes = newDislikes + 1;
+      }
+    }
+
+    // Update likes/dislikes in database
     const { data, error: updateError } = await supabase
       .from("quiz")
-      .update({ rating: newRating })
+      .update({ likes: newLikes, dislikes: newDislikes })
       .eq("id", quizId)
-      .select()
+      .select("likes, dislikes")
       .single();
 
     if (updateError) {
-      console.error("Error updating rating:", updateError);
+      console.error("Error updating likes/dislikes:", updateError);
       return NextResponse.json(
-        { error: "Failed to update rating" },
+        { error: "Failed to update likes/dislikes" },
         { status: 500 }
       );
     }
@@ -264,7 +311,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       quizId,
-      newRating,
+      likes: data.likes,
+      dislikes: data.dislikes,
     });
   } catch (error) {
     console.error("Error in update-rating route:", error);

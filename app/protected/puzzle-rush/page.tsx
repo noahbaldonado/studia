@@ -1,16 +1,9 @@
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
+import { requireUsername } from "@/lib/auth-utils";
 import { PuzzleRush } from "@/components/puzzle-rush";
 import { PuzzleRushHeader } from "@/components/puzzle-rush-header";
 
 export default async function PuzzleRushPage() {
-  const supabase = await createClient();
-
-  const { data: { user }, error } = await supabase.auth.getUser();
-
-  if (error || !user) {
-    return redirect("/");
-  }
+  await requireUsername();
 
   return (
     <div className="min-h-screen pb-20">

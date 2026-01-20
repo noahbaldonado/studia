@@ -68,8 +68,15 @@ export function PdfUpload({ courseId, onUploadSuccess }: PdfUploadProps) {
       });
 
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.error || "Error during upload");
+        let errorMessage = "Error during upload";
+        try {
+          const error = await response.json();
+          errorMessage = error.error || error.details || errorMessage;
+        } catch {
+          // If response is not JSON, use status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
 
       setUploadSuccess(true);

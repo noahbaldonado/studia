@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import { MyPosts } from "@/components/my-posts";
+import { formatUsername } from "@/lib/utils";
 import Link from "next/link";
 import { ChevronLeft } from "lucide-react";
 
@@ -21,12 +22,14 @@ export default async function UserPostsPage({
   // Get profile data to get user name
   const { data: profile } = await supabase
     .from("profile")
-    .select("metadata")
+    .select("metadata, username")
     .eq("id", userId)
     .single();
 
-  const metadata = profile?.metadata as any;
-  const displayName = metadata?.name || `User ${userId.substring(0, 8)}`;
+  const metadata = profile?.metadata as { name?: string; email?: string; [key: string]: unknown };
+  const displayName = profile?.username 
+    ? formatUsername(profile.username)
+    : metadata?.name || `User ${userId.substring(0, 8)}`;
 
   return (
     <div className="px-4 py-6 pb-24">

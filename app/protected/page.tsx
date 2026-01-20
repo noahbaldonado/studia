@@ -1,20 +1,14 @@
-import { createClient } from "@/lib/supabase/server";
-import { redirect } from "next/navigation";
-import { CardFeed } from "@/components/card-feed";
+import { requireUsername } from "@/lib/auth-utils";
 import { FeedHeader } from "@/components/feed-header";
+import { FeedPageClient } from "@/components/feed-page-client";
 
 export default async function ProtectedPage() {
-  const supabase = await createClient();
-
-  const { data: { user }, error } = await supabase.auth.getUser();
-  if (error || !user) {
-    return redirect("/");
-  }
+  await requireUsername();
 
   return (
     <div className="min-h-screen pb-20">
       <FeedHeader />
-      <CardFeed />
+      <FeedPageClient />
     </div>
   );
 }

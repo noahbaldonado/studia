@@ -9,15 +9,15 @@ export function PuzzleRushHeader() {
 
   return (
     <>
-      <div className="sticky top-0 bg-gradient-to-r from-white via-blue-50 to-white/80 backdrop-blur-sm z-10 px-4 py-4 border-b border-blue-200">
+      <div className="sticky top-0 bg-[hsl(var(--card))] border-b border-[hsl(var(--border))] z-10 px-4 py-3">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-blue-900">Quiz Rush</h1>
+          <h1 className="text-xl font-bold text-foreground">Quiz Rush</h1>
           <button
             onClick={() => setIsLeaderboardOpen(true)}
-            className="p-2 hover:bg-blue-100 rounded-full transition-colors"
+            className="p-1.5 hover:bg-[hsl(var(--secondary))] transition-colors"
             aria-label="Leaderboard"
           >
-            <Trophy className="h-6 w-6 text-blue-600" />
+            <Trophy className="h-5 w-5 text-[hsl(var(--primary))]" />
           </button>
         </div>
       </div>

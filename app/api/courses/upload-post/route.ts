@@ -40,6 +40,21 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Check if user is subscribed to the course
+    const { data: subscription, error: subError } = await supabase
+      .from("course_subscription")
+      .select("id")
+      .eq("user_id", user.id)
+      .eq("course_id", courseId)
+      .single();
+
+    if (subError || !subscription) {
+      return NextResponse.json(
+        { error: "You must be subscribed to this course to upload posts" },
+        { status: 403 }
+      );
+    }
+
     const courseName = courseData.name;
 
     // Get Gemini API key
@@ -65,6 +80,8 @@ export async function POST(request: NextRequest) {
         contentForTagging = `Question: ${postData.content.question}\nAnswer: ${postData.content.answer}`;
       } else if (postData.type === "sticky_note") {
         contentForTagging = `Title: ${postData.title}\nContent: ${postData.content}`;
+      } else if (postData.type === "poll") {
+        contentForTagging = `Question: ${postData.content.question}\nOptions: ${postData.content.options.join(", ")}`;
       }
 
       const tagPrompt = `Given the following educational content, generate 3-5 relevant topic tags. Return ONLY a JSON array of tag strings, no other text.
@@ -94,31 +111,24 @@ Generate tags now:`;
         // Continue without tags if parsing fails
         tags = [];
       }
-    } catch (geminiError: any) {
-      console.error("Error generating tags with Gemini:", geminiError);
+    } catch (geminiError: unknown) {
+      const error = geminiError as { message?: string };
+      console.error("Error generating tags with Gemini:", error.message || geminiError);
       // Continue without tags if Gemini fails
       tags = [];
     }
 
-    // Get user rating from profile
-    const { data: profileData } = await supabase
-      .from("profile")
-      .select("rating")
-      .eq("id", user.id)
-      .single();
-
-    const userRating = profileData?.rating || 7.5;
-
     // Create a copy of postData without tags for the data column
-    const postDataWithoutTags = { ...postData };
-    delete (postDataWithoutTags as any).suggested_topic_tags;
+    const { suggested_topic_tags, ...postDataWithoutTags } = postData;
 
     // Insert post into quiz table
+    // likes and dislikes default to 0, created_at is set automatically
     const { data: insertedQuiz, error: quizInsertError } = await supabase
       .from("quiz")
       .insert({
         data: postDataWithoutTags,
-        rating: userRating,
+        likes: 0,
+        dislikes: 0,
         course_id: courseId,
         user_id: user.id,
       })
@@ -188,10 +198,11 @@ Generate tags now:`;
       quizId: insertedQuiz.id,
       tagsGenerated: tags.length,
     });
-  } catch (error: any) {
-    console.error("Error in upload-post route:", error);
+  } catch (error: unknown) {
+    const err = error as { message?: string };
+    console.error("Error in upload-post route:", err.message || error);
     return NextResponse.json(
-      { error: "Internal server error", details: error.message },
+      { error: "Internal server error" },
       { status: 500 }
     );
   }

@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import { FollowButton } from "@/components/follow-button";
+import { formatUsername } from "@/lib/utils";
 import Link from "next/link";
 
 export default async function OtherUserProfilePage({
@@ -25,7 +26,7 @@ export default async function OtherUserProfilePage({
   // Get profile data for the user
   const { data: profile, error: profileError } = await supabase
     .from("profile")
-    .select("id, rating, metadata")
+    .select("id, rating, metadata, username")
     .eq("id", id)
     .single();
 
@@ -33,8 +34,10 @@ export default async function OtherUserProfilePage({
     return notFound();
   }
 
-  const metadata = profile.metadata as any;
-  const displayName = metadata?.name || `User ${id.substring(0, 8)}`;
+  const metadata = profile.metadata as { name?: string; email?: string; [key: string]: unknown };
+  const displayName = profile.username 
+    ? formatUsername(profile.username)
+    : metadata?.name || `User ${id.substring(0, 8)}`;
   const userRating = Math.min(10, profile.rating || 7.5);
   const currentStreak = metadata?.current_streak || 0;
   const puzzleRushBestScore = metadata?.puzzle_rush_best_score || 0;

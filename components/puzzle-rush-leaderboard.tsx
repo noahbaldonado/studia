@@ -47,24 +47,24 @@ export function PuzzleRushLeaderboard({ isOpen, onClose }: PuzzleRushLeaderboard
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-blue-900/50 p-4">
-      <div className="w-full max-w-md bg-gradient-to-br from-white to-blue-50 rounded-lg shadow-xl max-h-[80vh] flex flex-col border-2 border-blue-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4">
+      <div className="w-full max-w-md bg-[hsl(var(--card))] shadow-xl max-h-[80vh] flex flex-col border-2 border-[hsl(var(--border))]">
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-blue-200">
-          <h2 className="text-xl font-bold flex items-center gap-2 text-blue-900">
-            <Trophy className="h-5 w-5 text-blue-600" />
+        <div className="flex items-center justify-between p-4 border-b border-[hsl(var(--border))]">
+          <h2 className="text-xl font-bold flex items-center gap-2 text-foreground">
+            <Trophy className="h-5 w-5 text-[hsl(var(--primary))]" />
             Leaderboard
           </h2>
           <button
             onClick={onClose}
-            className="text-blue-500 hover:text-blue-700 text-xl font-bold"
+            className="text-foreground hover:text-[hsl(var(--primary))] text-xl font-bold transition-colors"
           >
             ×
           </button>
         </div>
 
         {/* Toggle */}
-        <div className="flex gap-2 p-4 border-b border-blue-200">
+        <div className="flex gap-2 p-4 border-b border-[hsl(var(--border))]">
           <Button
             variant={type === "global" ? "default" : "outline"}
             onClick={() => setType("global")}
@@ -84,9 +84,9 @@ export function PuzzleRushLeaderboard({ isOpen, onClose }: PuzzleRushLeaderboard
         {/* Leaderboard Content */}
         <div className="flex-1 overflow-y-auto p-4">
           {isLoading ? (
-            <div className="text-center py-8 text-blue-600">Loading...</div>
+            <div className="text-center py-8 text-[hsl(var(--muted-foreground))] text-xs">Loading...</div>
           ) : leaderboard.length === 0 ? (
-            <div className="text-center py-8 text-blue-600">
+            <div className="text-center py-8 text-[hsl(var(--muted-foreground))] text-xs">
               No {type === "friends" ? "friends" : "users"} with scores yet
             </div>
           ) : (
@@ -94,17 +94,17 @@ export function PuzzleRushLeaderboard({ isOpen, onClose }: PuzzleRushLeaderboard
               {leaderboard.map((entry) => (
                 <div
                   key={entry.id}
-                  className="flex items-center justify-between p-3 rounded-lg border border-blue-200 hover:bg-blue-50 bg-white"
+                  className="flex items-center justify-between p-3 border border-[hsl(var(--border))] hover:bg-[hsl(var(--secondary))] bg-[hsl(var(--card))] transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center font-bold text-sm text-blue-700">
+                    <div className="w-8 h-8 bg-[hsl(var(--secondary))] flex items-center justify-center font-bold text-xs text-foreground">
                       {entry.rank}
                     </div>
                     <div>
-                      <div className="font-semibold text-blue-900">{entry.name}</div>
+                      <div className="font-semibold text-foreground text-sm">{entry.name}</div>
                     </div>
                   </div>
-                  <div className="font-bold text-blue-600">{entry.score} pts</div>
+                  <div className="font-bold text-[hsl(var(--primary))] text-sm">{entry.score} pts</div>
                 </div>
               ))}
             </div>

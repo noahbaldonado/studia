@@ -10,7 +10,7 @@ interface UploadPostProps {
 }
 
 export function UploadPost({ courseId, onUploadSuccess }: UploadPostProps) {
-  const [postType, setPostType] = useState<"quiz" | "flashcard" | "sticky_note">("quiz");
+  const [postType, setPostType] = useState<"quiz" | "flashcard" | "sticky_note" | "poll">("quiz");
   const [uploading, setUploading] = useState(false);
   const [uploadSuccess, setUploadSuccess] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
@@ -19,7 +19,7 @@ export function UploadPost({ courseId, onUploadSuccess }: UploadPostProps) {
   // Quiz state
   const [quizTitle, setQuizTitle] = useState("");
   const [quizQuestion, setQuizQuestion] = useState("");
-  const [quizOptions, setQuizOptions] = useState(["", "", "", ""]);
+  const [quizOptions, setQuizOptions] = useState(["", "", "", ""]); // Default to 4 options
   const [correctAnswer, setCorrectAnswer] = useState(0);
   
   // Flashcard state
@@ -29,17 +29,42 @@ export function UploadPost({ courseId, onUploadSuccess }: UploadPostProps) {
   // Sticky note state
   const [noteTitle, setNoteTitle] = useState("");
   const [noteContent, setNoteContent] = useState("");
+  
+  // Poll state
+  const [pollQuestion, setPollQuestion] = useState("");
+  const [pollOptions, setPollOptions] = useState(["", ""]);
 
   const handleUpload = async () => {
     setUploading(true);
     setUploadError(null);
     setUploadSuccess(false);
     try {
-      let postData: any;
+      type PostDataType = 
+        | { type: "quiz"; title: string; content: { question: string; options: string[]; correct_answer: number } }
+        | { type: "flashcard"; content: { question: string; answer: string } }
+        | { type: "sticky_note"; title: string; content: string }
+        | { type: "poll"; content: { question: string; options: string[] } };
+      
+      let postData: PostDataType | undefined;
 
       if (postType === "quiz") {
-        if (!quizTitle || !quizQuestion || quizOptions.some(opt => !opt.trim())) {
-          setNotification({ message: "Please fill in all quiz fields", type: "error" });
+        const validOptions = quizOptions.filter(opt => opt.trim());
+        if (!quizTitle || !quizQuestion || validOptions.length < 2 || validOptions.length > 5) {
+          setNotification({ message: "Please fill in title, question, and 2-5 options", type: "error" });
+          setUploading(false);
+          setTimeout(() => setNotification(null), 3000);
+          return;
+        }
+        // Map correctAnswer index from original array to filtered array
+        const validIndices: number[] = [];
+        quizOptions.forEach((opt, idx) => {
+          if (opt.trim()) {
+            validIndices.push(idx);
+          }
+        });
+        const correctAnswerIndex = validIndices.indexOf(correctAnswer);
+        if (correctAnswerIndex === -1 || correctAnswer >= quizOptions.length) {
+          setNotification({ message: "Please select a valid correct answer", type: "error" });
           setUploading(false);
           setTimeout(() => setNotification(null), 3000);
           return;
@@ -49,8 +74,8 @@ export function UploadPost({ courseId, onUploadSuccess }: UploadPostProps) {
           title: quizTitle,
           content: {
             question: quizQuestion,
-            options: quizOptions.map(opt => opt.trim()),
-            correct_answer: correctAnswer,
+            options: validOptions,
+            correct_answer: correctAnswerIndex,
           },
         };
       } else if (postType === "flashcard") {
@@ -79,6 +104,21 @@ export function UploadPost({ courseId, onUploadSuccess }: UploadPostProps) {
           title: noteTitle,
           content: noteContent,
         };
+      } else if (postType === "poll") {
+        const validOptions = pollOptions.filter(opt => opt.trim());
+        if (!pollQuestion || validOptions.length < 2 || validOptions.length > 5) {
+          setNotification({ message: "Please fill in the question and 2-5 options", type: "error" });
+          setUploading(false);
+          setTimeout(() => setNotification(null), 3000);
+          return;
+        }
+        postData = {
+          type: "poll",
+          content: {
+            question: pollQuestion,
+            options: validOptions,
+          },
+        };
       }
 
       const response = await fetch("/api/courses/upload-post", {
@@ -97,23 +137,30 @@ export function UploadPost({ courseId, onUploadSuccess }: UploadPostProps) {
         throw new Error(error.error || "Failed to upload post");
       }
 
+      if (!postData) {
+        throw new Error("Post data is required");
+      }
+
       // Reset form
       setQuizTitle("");
       setQuizQuestion("");
-      setQuizOptions(["", "", "", ""]);
+      setQuizOptions(["", "", "", ""]); // Reset to default 4 options
       setCorrectAnswer(0);
       setFlashcardQuestion("");
       setFlashcardAnswer("");
       setNoteTitle("");
       setNoteContent("");
+      setPollQuestion("");
+      setPollOptions(["", ""]);
 
       setUploadSuccess(true);
       if (onUploadSuccess) {
         onUploadSuccess();
       }
-    } catch (error: any) {
-      console.error("Error uploading post:", error);
-      setUploadError(error.message || "Failed to upload post. Please try again.");
+    } catch (error: unknown) {
+      const err = error as { message?: string };
+      console.error("Error uploading post:", err.message || error);
+      setUploadError(err.message || "Failed to upload post. Please try again.");
     } finally {
       setUploading(false);
     }
@@ -137,6 +184,8 @@ export function UploadPost({ courseId, onUploadSuccess }: UploadPostProps) {
         return "Upload Flashcard";
       case "sticky_note":
         return "Upload Sticky Note";
+      case "poll":
+        return "Upload Poll";
       default:
         return "Upload Post";
     }
@@ -150,6 +199,8 @@ export function UploadPost({ courseId, onUploadSuccess }: UploadPostProps) {
         return "Upload Flashcard";
       case "sticky_note":
         return "Upload Sticky Note";
+      case "poll":
+        return "Upload Poll";
       default:
         return "Upload Post";
     }
@@ -192,6 +243,16 @@ export function UploadPost({ courseId, onUploadSuccess }: UploadPostProps) {
         >
           Sticky Note
         </button>
+        <button
+          onClick={() => setPostType("poll")}
+          className={`flex-1 text-center px-4 py-2 rounded-lg transition-colors ${
+            postType === "poll"
+              ? "bg-blue-100 text-blue-700 font-semibold"
+              : "bg-blue-50 text-blue-600 hover:bg-blue-100"
+          }`}
+        >
+          Poll
+        </button>
       </div>
 
       {/* Form based on type */}
@@ -218,7 +279,7 @@ export function UploadPost({ courseId, onUploadSuccess }: UploadPostProps) {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-2 text-blue-900">Options</label>
+            <label className="block text-sm font-medium mb-2 text-blue-900">Options (2-5)</label>
             <div className="space-y-2">
               {quizOptions.map((option, index) => (
                 <div key={index} className="flex items-center gap-2">
@@ -244,8 +305,35 @@ export function UploadPost({ courseId, onUploadSuccess }: UploadPostProps) {
                     }`}
                     placeholder={`Option ${index + 1}`}
                   />
+                  {quizOptions.length > 2 && (
+                    <button
+                      onClick={() => {
+                        const newOptions = quizOptions.filter((_, i) => i !== index);
+                        setQuizOptions(newOptions);
+                        // Adjust correct answer if needed
+                        if (correctAnswer >= newOptions.length) {
+                          setCorrectAnswer(Math.max(0, newOptions.length - 1));
+                        } else if (correctAnswer > index) {
+                          setCorrectAnswer(correctAnswer - 1);
+                        }
+                      }}
+                      className="px-2 py-1 text-red-600 hover:bg-red-50 rounded"
+                      type="button"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               ))}
+              {quizOptions.length < 5 && (
+                <button
+                  onClick={() => setQuizOptions([...quizOptions, ""])}
+                  className="w-full px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 border border-blue-300 border-dashed rounded-lg"
+                  type="button"
+                >
+                  + Add Option
+                </button>
+              )}
             </div>
           </div>
         </div>
@@ -297,6 +385,62 @@ export function UploadPost({ courseId, onUploadSuccess }: UploadPostProps) {
               rows={6}
               placeholder="Enter note content"
             />
+          </div>
+        </div>
+      )}
+
+      {postType === "poll" && (
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1 text-blue-900">Question</label>
+            <textarea
+              value={pollQuestion}
+              onChange={(e) => setPollQuestion(e.target.value)}
+              className="w-full px-3 py-2.5 border border-blue-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white text-blue-900"
+              rows={4}
+              placeholder="Enter poll question"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-2 text-blue-900">Options (2-5)</label>
+            <div className="space-y-2">
+              {pollOptions.map((option, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <input
+                    type="text"
+                    value={option}
+                    onChange={(e) => {
+                      const newOptions = [...pollOptions];
+                      newOptions[index] = e.target.value;
+                      setPollOptions(newOptions);
+                    }}
+                    className="flex-1 px-3 py-2 text-sm rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-blue-900 placeholder:text-blue-400 bg-white border border-blue-300"
+                    placeholder={`Option ${index + 1}`}
+                  />
+                  {pollOptions.length > 2 && (
+                    <button
+                      onClick={() => {
+                        const newOptions = pollOptions.filter((_, i) => i !== index);
+                        setPollOptions(newOptions);
+                      }}
+                      className="px-2 py-1 text-red-600 hover:bg-red-50 rounded"
+                      type="button"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              ))}
+              {pollOptions.length < 5 && (
+                <button
+                  onClick={() => setPollOptions([...pollOptions, ""])}
+                  className="w-full px-3 py-2 text-sm text-blue-600 hover:bg-blue-50 border border-blue-300 border-dashed rounded-lg"
+                  type="button"
+                >
+                  + Add Option
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}

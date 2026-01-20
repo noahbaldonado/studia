@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { formatUsername } from "@/lib/utils";
 
 export const dynamic = 'force-dynamic';
 
@@ -44,7 +45,7 @@ export async function GET(request: NextRequest) {
       // Get profiles of friends (including current user) with daily streaks
       const { data: profiles, error: profileError } = await supabase
         .from("profile")
-        .select("id, metadata")
+        .select("id, metadata, username")
         .in("id", userIdsToFetch);
 
       if (profileError) {
@@ -55,16 +56,19 @@ export async function GET(request: NextRequest) {
       // Build leaderboard from friends (including current user)
       const leaderboard = (profiles || [])
         .map((profile) => {
-          const metadata = profile.metadata as any;
+          const metadata = profile.metadata as { current_streak?: number | string; name?: string; [key: string]: unknown };
           // Handle both number and string types for streak
           const streak = typeof metadata?.current_streak === 'number' 
             ? metadata.current_streak 
             : typeof metadata?.current_streak === 'string'
             ? parseInt(metadata.current_streak) || 0
             : 0;
+          const displayName = profile.username
+            ? formatUsername(profile.username)
+            : metadata?.name || `User ${profile.id.substring(0, 8)}`;
           return {
             id: profile.id,
-            name: metadata?.name || `User ${profile.id.substring(0, 8)}`,
+            name: displayName,
             streak: streak,
           };
         })
@@ -80,7 +84,7 @@ export async function GET(request: NextRequest) {
       // Global leaderboard - get all profiles with daily streaks
       const { data: profiles, error: profileError } = await supabase
         .from("profile")
-        .select("id, metadata");
+        .select("id, metadata, username");
 
       if (profileError) {
         console.error("Error fetching profiles:", profileError);
@@ -90,16 +94,19 @@ export async function GET(request: NextRequest) {
       // Build global leaderboard
       const leaderboard = (profiles || [])
         .map((profile) => {
-          const metadata = profile.metadata as any;
+          const metadata = profile.metadata as { current_streak?: number | string; name?: string; [key: string]: unknown };
           // Handle both number and string types for streak
           const streak = typeof metadata?.current_streak === 'number' 
             ? metadata.current_streak 
             : typeof metadata?.current_streak === 'string'
             ? parseInt(metadata.current_streak) || 0
             : 0;
+          const displayName = profile.username
+            ? formatUsername(profile.username)
+            : metadata?.name || `User ${profile.id.substring(0, 8)}`;
           return {
             id: profile.id,
-            name: metadata?.name || `User ${profile.id.substring(0, 8)}`,
+            name: displayName,
             streak: streak,
           };
         })

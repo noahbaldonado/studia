@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { formatUsername } from "@/lib/utils";
 
 // GET: Fetch comments for a quiz with nested structure
 export async function GET(request: NextRequest) {
@@ -84,7 +85,7 @@ export async function GET(request: NextRequest) {
     const userIds = [...new Set(comments?.map((c) => c.user_id) || [])];
     const { data: profiles } = await supabase
       .from("profile")
-      .select("id, metadata")
+      .select("id, metadata, username")
       .in("id", userIds);
 
     const profileMap = new Map(
@@ -95,10 +96,12 @@ export async function GET(request: NextRequest) {
     const commentsMap = new Map(
       comments?.map((c) => {
         const profile = profileMap.get(c.user_id);
-        const authorName =
-          (profile?.metadata as any)?.name ||
-          (profile?.metadata as any)?.email ||
-          `User ${c.user_id.substring(0, 8)}`;
+        const metadata = profile?.metadata as { name?: string; email?: string; [key: string]: unknown } | undefined;
+        const authorName = profile?.username
+          ? formatUsername(profile.username)
+          : metadata?.name ||
+            metadata?.email ||
+            `User ${c.user_id.substring(0, 8)}`;
 
         return [
           c.id,
@@ -109,7 +112,7 @@ export async function GET(request: NextRequest) {
               (commentLikes[c.id]?.likes || 0) -
               (commentLikes[c.id]?.dislikes || 0),
             userLike: commentLikes[c.id]?.userLike ?? null,
-            replies: [] as any[],
+            replies: [] as CommentWithReplies[],
             userId: c.user_id, // Include user_id for ownership checks
           },
         ];
@@ -117,7 +120,21 @@ export async function GET(request: NextRequest) {
     );
 
     // Build nested structure
-    const topLevelComments: any[] = [];
+    interface CommentWithReplies {
+      id: string;
+      content: string;
+      parent_comment_id: string | null;
+      created_at: string;
+      updated_at: string;
+      user_id: string;
+      likes: number;
+      dislikes: number;
+      userLike: boolean | null;
+      authorName: string;
+      authorEmail: string | null;
+      replies: CommentWithReplies[];
+    }
+    const topLevelComments: CommentWithReplies[] = [];
     commentsMap.forEach((comment) => {
       if (comment.parent_comment_id) {
         // This is a reply, add it to parent's replies
@@ -202,7 +219,7 @@ export async function POST(request: NextRequest) {
     // Get user's profile for author name
     const { data: profile } = await supabase
       .from("profile")
-      .select("metadata")
+      .select("metadata, username")
       .eq("id", user.id)
       .single();
 
@@ -226,11 +243,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const authorName =
-      (profile?.metadata as any)?.name ||
-      (profile?.metadata as any)?.email ||
-      user.email ||
-      `User ${user.id.substring(0, 8)}`;
+    const metadata = profile?.metadata as { name?: string; email?: string; [key: string]: unknown } | undefined;
+    const authorName = profile?.username
+      ? formatUsername(profile.username)
+      : metadata?.name ||
+        metadata?.email ||
+        user.email ||
+        `User ${user.id.substring(0, 8)}`;
 
     return NextResponse.json({
       success: true,

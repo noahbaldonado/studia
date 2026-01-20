@@ -188,10 +188,10 @@ export function QuizComments({ quizId }: QuizCommentsProps) {
   };
 
   return (
-    <div className="mt-4 border-t border-blue-200 pt-4">
+    <div className="mt-3 border-t border-[hsl(var(--border))] pt-3">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center gap-2 text-sm font-medium text-blue-700 hover:text-blue-900 w-full text-left"
+        className="flex items-center gap-2 text-xs font-medium text-[hsl(var(--primary))] hover:text-[hsl(var(--accent))] w-full text-left"
       >
         <MessageSquare className="w-4 h-4" />
         <span>
@@ -206,38 +206,38 @@ export function QuizComments({ quizId }: QuizCommentsProps) {
       </button>
 
       {isExpanded && (
-        <div className="mt-4 space-y-4">
+        <div className="mt-3 space-y-3">
           {/* Comment form */}
           <div className="space-y-2">
             <textarea
               value={commentContent}
               onChange={(e) => setCommentContent(e.target.value)}
               placeholder="Write a comment..."
-              className="w-full p-3 bg-white text-blue-900 border border-blue-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500 placeholder:text-blue-400"
+              className="w-full p-2.5 bg-[hsl(var(--secondary))] text-foreground border border-[hsl(var(--border))] resize-none focus:outline-none focus:ring-1 focus:ring-[hsl(var(--primary))] placeholder:text-[hsl(var(--muted-foreground))] text-xs"
               rows={3}
             />
             <button
               onClick={handleSubmitComment}
               disabled={!commentContent.trim() || isSubmitting}
-              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-3 py-1.5 bg-[hsl(var(--primary))] text-[hsl(var(--background))] hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed text-xs"
             >
-              <Send className="w-4 h-4" />
+              <Send className="w-3.5 h-3.5" />
               {isSubmitting ? "Posting..." : "Post Comment"}
             </button>
           </div>
 
           {/* Error message */}
           {error && (
-            <div className="text-blue-600 text-sm">{error}</div>
+            <div className="text-[hsl(var(--destructive))] text-xs">{error}</div>
           )}
 
           {/* Comments list */}
           {isLoading ? (
-            <div className="text-center py-4 text-blue-600">Loading comments...</div>
+            <div className="text-center py-3 text-[hsl(var(--muted-foreground))] text-xs">Loading comments...</div>
           ) : comments.length === 0 ? (
-            <div className="text-center py-4 text-blue-600">No comments yet. Be the first to comment!</div>
+            <div className="text-center py-3 text-[hsl(var(--muted-foreground))] text-xs">No comments yet. Be the first to comment!</div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-2.5">
                 {comments.map((comment) => (
                   <CommentItem
                     key={comment.id}

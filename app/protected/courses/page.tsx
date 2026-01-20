@@ -269,8 +269,8 @@ export default function CoursesPage() {
   if (loading) {
     return (
       <div className="px-4 py-6">
-        <h1 className="text-2xl font-bold mb-6 text-blue-900">Courses</h1>
-        <div className="text-center py-12 text-blue-600">Loading courses...</div>
+        <h1 className="text-2xl font-bold mb-6 text-foreground">Courses</h1>
+        <div className="text-center py-12 text-[hsl(var(--muted-foreground))]">Loading courses...</div>
       </div>
     );
   }
@@ -278,10 +278,10 @@ export default function CoursesPage() {
   if (error) {
     return (
       <div className="px-4 py-6">
-        <h1 className="text-2xl font-bold mb-6 text-blue-900">Courses</h1>
+        <h1 className="text-2xl font-bold mb-6 text-foreground">Courses</h1>
         <div className="text-center py-12">
-          <p className="text-blue-600 mb-2">Error loading courses</p>
-          <p className="text-sm text-blue-500">{error}</p>
+          <p className="text-[hsl(var(--muted-foreground))] mb-2">Error loading courses</p>
+          <p className="text-sm text-[hsl(var(--destructive))]">{error}</p>
         </div>
       </div>
     );
@@ -292,7 +292,7 @@ export default function CoursesPage() {
 
   return (
     <div className="px-4 py-6">
-      <h1 className="text-2xl font-bold mb-4 text-blue-900">Courses</h1>
+      <h1 className="text-2xl font-bold mb-4 text-foreground">Courses</h1>
       
       <div className="mb-6">
         <CourseSearch
@@ -303,7 +303,7 @@ export default function CoursesPage() {
       </div>
 
       {searchQuery && (
-        <p className="text-sm text-blue-600 mb-4">
+        <p className="text-xs text-[hsl(var(--muted-foreground))] mb-4">
           Found {totalDisplayed} course{totalDisplayed !== 1 ? "s" : ""}
         </p>
       )}
@@ -321,20 +321,20 @@ export default function CoursesPage() {
               <button
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage === 1}
-                className="flex items-center gap-1 px-4 py-2 rounded-lg border border-blue-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-50 transition-colors text-blue-700 bg-white"
+                className="flex items-center gap-1 px-4 py-2 border border-[hsl(var(--border))] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[hsl(var(--secondary))] transition-colors text-foreground bg-[hsl(var(--card))] text-xs"
               >
                 <ChevronLeft className="h-4 w-4" />
                 <span>Previous</span>
               </button>
               
-              <span className="text-sm text-blue-700">
+              <span className="text-xs text-[hsl(var(--muted-foreground))]">
                 Page {currentPage} of {totalPages}
               </span>
               
               <button
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
-                className="flex items-center gap-1 px-4 py-2 rounded-lg border border-blue-200 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-50 transition-colors text-blue-700 bg-white"
+                className="flex items-center gap-1 px-4 py-2 border border-[hsl(var(--border))] disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[hsl(var(--secondary))] transition-colors text-foreground bg-[hsl(var(--card))] text-xs"
               >
                 <span>Next</span>
                 <ChevronRight className="h-4 w-4" />
@@ -343,7 +343,7 @@ export default function CoursesPage() {
           )}
         </>
       ) : (
-        <div className="text-center py-12 text-blue-600">
+        <div className="text-center py-12 text-[hsl(var(--muted-foreground))]">
           <p>No courses found.</p>
         </div>
       )}

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { formatUsername } from "@/lib/utils";
 
 export const dynamic = 'force-dynamic';
 
@@ -81,7 +82,7 @@ export async function GET(request: NextRequest) {
     // Get profile info for these users
     const { data: profiles, error: profileError } = await supabase
       .from("profile")
-      .select("id, metadata")
+      .select("id, metadata, username")
       .in("id", userIds);
 
     if (profileError) {
@@ -98,15 +99,19 @@ export async function GET(request: NextRequest) {
     const results = sortedUsers
       .map(({ userId, mutualCount }) => {
         const profile = profileMap.get(userId);
-        const metadata = profile?.metadata as any;
+        if (!profile) return null;
+        const metadata = profile.metadata as { name?: string; email?: string; [key: string]: unknown };
+        const displayName = profile.username
+          ? formatUsername(profile.username)
+          : metadata?.name || `User ${userId.substring(0, 8)}`;
         return {
           id: userId,
-          name: metadata?.name || `User ${userId.substring(0, 8)}`,
+          name: displayName,
           email: metadata?.email || null,
           mutualCourses: mutualCount,
         };
       })
-      .filter((u) => u.name); // Filter out any invalid entries
+      .filter((u): u is NonNullable<typeof u> => u !== null); // Filter out invalid entries
 
     return NextResponse.json({ users: results });
   } catch (error) {
