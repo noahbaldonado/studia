@@ -22,13 +22,13 @@ interface Quiz {
   rating: number;
 }
 
-const PUZZLE_RUSH_DURATION = 60; // 1 minute in seconds
+const QUIZ_RUSH_DURATION = 60; // 1 minute in seconds
 const MAX_WRONG_ANSWERS = 3;
 
-export function PuzzleRush() {
+export function QuizRush() {
   const [quizzes, setQuizzes] = useState<Quiz[]>([]);
   const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
-  const [timeRemaining, setTimeRemaining] = useState(PUZZLE_RUSH_DURATION);
+  const [timeRemaining, setTimeRemaining] = useState(QUIZ_RUSH_DURATION);
   const [isActive, setIsActive] = useState(false);
   const [isFinished, setIsFinished] = useState(false);
   const [correctAnswers, setCorrectAnswers] = useState(0);
@@ -53,7 +53,7 @@ export function PuzzleRush() {
       // Get scored quizzes filtered by subscriptions, but only quiz type
       const result = await supabase.rpc("get_scored_quizzes_with_tags", {
         p_user_id: user.id,
-        p_limit: 100, // Get more quizzes for puzzle rush
+        p_limit: 100, // Get more quizzes for quiz rush
       });
 
       if (result.error) {
@@ -103,7 +103,7 @@ export function PuzzleRush() {
 
   const startGame = () => {
     setIsActive(true);
-    setTimeRemaining(PUZZLE_RUSH_DURATION);
+    setTimeRemaining(QUIZ_RUSH_DURATION);
     setCorrectAnswers(0);
     setWrongAnswers(0);
     setCurrentQuizIndex(0);
@@ -115,7 +115,7 @@ export function PuzzleRush() {
   const resetGame = () => {
     setIsActive(false);
     setIsFinished(false);
-    setTimeRemaining(PUZZLE_RUSH_DURATION);
+    setTimeRemaining(QUIZ_RUSH_DURATION);
     setCorrectAnswers(0);
     setWrongAnswers(0);
     setCurrentQuizIndex(0);
@@ -129,7 +129,7 @@ export function PuzzleRush() {
 
     // Save score to profile metadata
     try {
-      const response = await fetch("/api/puzzle-rush/save-score", {
+      const response = await fetch("/api/quiz-rush/save-score", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -140,10 +140,10 @@ export function PuzzleRush() {
       });
 
       if (!response.ok) {
-        console.error("Error saving puzzle rush score");
+        console.error("Error saving quiz rush score");
       }
     } catch (error) {
-      console.error("Error saving puzzle rush score:", error);
+      console.error("Error saving quiz rush score:", error);
     }
   };
 

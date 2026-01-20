@@ -1,10 +1,62 @@
--- Update scoring function to use per-user interaction scores
--- User-specific score is used to penalize posts (higher score = more penalty)
+-- Database functions for quiz scoring and tag management
+-- Run this AFTER 01_base_tables.sql
+
+-- Function to atomically update multiple tag scores
+-- This is used when a quiz is liked/disliked to update all associated tags
+CREATE OR REPLACE FUNCTION increment_tag_scores(
+  tag_ids BIGINT[],
+  score_delta DOUBLE PRECISION
+)
+RETURNS void AS $$
+BEGIN
+  UPDATE tag
+  SET score = score + score_delta
+  WHERE id = ANY(tag_ids);
+END;
+$$ LANGUAGE plpgsql;
+
+-- Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION increment_tag_scores(BIGINT[], DOUBLE PRECISION) TO authenticated;
+
+-- Function to increment user interaction score with capping at 10
+-- Used for view time tracking and flashcard flips
+CREATE OR REPLACE FUNCTION increment_user_interaction_score(
+  p_quiz_id UUID,
+  p_user_id UUID,
+  p_increment INTEGER
+)
+RETURNS INTEGER AS $$
+DECLARE
+  current_score INTEGER;
+  new_score INTEGER;
+BEGIN
+  -- Get current score or default to 0
+  SELECT COALESCE(interaction_score, 0) INTO current_score
+  FROM quiz_interaction
+  WHERE quiz_id = p_quiz_id AND user_id = p_user_id;
+  
+  -- Calculate new score, capped at 10
+  new_score := LEAST(COALESCE(current_score, 0) + p_increment, 10);
+  
+  -- Update or insert interaction
+  INSERT INTO quiz_interaction (quiz_id, user_id, interaction_score, is_like)
+  VALUES (p_quiz_id, p_user_id, new_score, NULL)
+  ON CONFLICT (quiz_id, user_id)
+  DO UPDATE SET interaction_score = new_score;
+  
+  RETURN new_score;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Grant execute permission to authenticated users
+GRANT EXECUTE ON FUNCTION increment_user_interaction_score(UUID, UUID, INTEGER) TO authenticated;
+
+-- Function to get quizzes with calculated scores, filtered by user subscriptions
+-- Returns quizzes ordered by final_score (descending)
+-- Algorithm: 20% tag scores + 15% user rating + 45% recency + 20% total interaction score
+-- User-specific interaction score (0-10) is used to penalize posts (higher = more penalty)
 -- Total interaction score (sum of all user scores) is used to boost posts
-
-DROP FUNCTION IF EXISTS get_scored_quizzes_with_tags(UUID, INT);
-
-CREATE FUNCTION get_scored_quizzes_with_tags(p_user_id UUID, p_limit INT DEFAULT 50)
+CREATE OR REPLACE FUNCTION get_scored_quizzes_with_tags(p_user_id UUID, p_limit INT DEFAULT 50)
 RETURNS TABLE (
   id UUID,
   data JSONB,
@@ -23,7 +75,9 @@ RETURNS TABLE (
   pdf_owner_username TEXT,
   course_name TEXT,
   has_interacted BOOLEAN,
-  user_interaction_score INTEGER
+  user_interaction_score INTEGER,
+  author_profile_picture_url TEXT,
+  pdf_owner_profile_picture_url TEXT
 ) AS $$
 DECLARE
   max_tag_sum DOUBLE PRECISION;
@@ -80,9 +134,11 @@ BEGIN
       q.created_at,
       q.user_id,
       author_profile.username AS author_username,
+      author_profile.profile_picture_url AS author_profile_picture_url,
       q.pdf_id,
       pdf_owner_profile.id AS pdf_owner_id,
       pdf_owner_profile.username AS pdf_owner_username,
+      pdf_owner_profile.profile_picture_url AS pdf_owner_profile_picture_url,
       COALESCE(SUM(t.score), 0) AS tag_sum,
       COALESCE(p.rating, 7.5) AS user_rating,
       qi.is_like,
@@ -107,8 +163,8 @@ BEGIN
     LEFT JOIN tag t ON t.id = qt.tag_id
     LEFT JOIN quiz_interaction qi ON qi.quiz_id = q.id AND qi.user_id = p_user_id
     GROUP BY q.id, q.course_id, c.name, q.rating, q.likes, q.dislikes, q.created_at, q.user_id, 
-             author_profile.username, q.pdf_id, pdf_owner_profile.id, pdf_owner_profile.username, 
-             p.rating, qi.is_like, qi.quiz_id, qi.interaction_score
+             author_profile.username, author_profile.profile_picture_url, q.pdf_id, pdf_owner_profile.id, pdf_owner_profile.username, 
+             pdf_owner_profile.profile_picture_url, p.rating, qi.is_like, qi.quiz_id, qi.interaction_score
   )
   SELECT
     sq.id,
@@ -157,13 +213,15 @@ BEGIN
     sq.pdf_owner_username,
     sq.course_name,
     sq.has_interacted,
-    sq.user_interaction_score
+    sq.user_interaction_score,
+    sq.author_profile_picture_url,
+    sq.pdf_owner_profile_picture_url
   FROM scored_quizzes sq
   LEFT JOIN quiz_tag qt ON qt.quiz_id = sq.id
   LEFT JOIN tag t ON t.id = qt.tag_id
   GROUP BY sq.id, sq.data, sq.course_id, sq.course_name, sq.rating, sq.likes, sq.dislikes, sq.created_at, 
-           sq.user_id, sq.author_username, sq.pdf_id, sq.pdf_owner_id, sq.pdf_owner_username, 
-           sq.tag_sum, sq.user_rating, sq.is_like, sq.has_interacted, sq.user_interaction_score, 
+           sq.user_id, sq.author_username, sq.author_profile_picture_url, sq.pdf_id, sq.pdf_owner_id, sq.pdf_owner_username, 
+           sq.pdf_owner_profile_picture_url, sq.tag_sum, sq.user_rating, sq.is_like, sq.has_interacted, sq.user_interaction_score, 
            sq.total_interaction_score, sq.days_old, max_tag_sum, max_total_interaction_score
   ORDER BY final_score DESC
   LIMIT p_limit;

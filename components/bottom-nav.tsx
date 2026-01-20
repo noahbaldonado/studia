@@ -8,7 +8,7 @@ export function BottomNav() {
   const pathname = usePathname();
   const isHome = pathname === "/protected";
   const isCourses = pathname.startsWith("/protected/courses");
-  const isPuzzleRush = pathname.startsWith("/protected/puzzle-rush");
+  const isMinigames = pathname.startsWith("/protected/minigames");
   const isFriends = pathname.startsWith("/protected/friends");
   const isProfile = pathname.startsWith("/protected/profile");
 
@@ -47,17 +47,17 @@ export function BottomNav() {
           </span>
         </Link>
         <Link
-          href="/protected/puzzle-rush"
+          href="/protected/minigames"
           className="flex min-h-[40px] min-w-[40px] flex-col items-center justify-center gap-0.5 px-2.5 transition-colors active:opacity-70"
-          aria-label="Quiz Rush"
+          aria-label="Minigames"
         >
           <Timer
-            className={`h-5 w-5 ${isPuzzleRush ? "text-[hsl(var(--primary))]" : "text-[hsl(var(--muted-foreground))]"}`}
+            className={`h-5 w-5 ${isMinigames ? "text-[hsl(var(--primary))]" : "text-[hsl(var(--muted-foreground))]"}`}
           />
           <span
-            className={`text-xs font-medium ${isPuzzleRush ? "text-[hsl(var(--primary))]" : "text-[hsl(var(--muted-foreground))]"}`}
+            className={`text-xs font-medium ${isMinigames ? "text-[hsl(var(--primary))]" : "text-[hsl(var(--muted-foreground))]"}`}
           >
-            Quiz Rush
+            Minigames
           </span>
         </Link>
         <Link

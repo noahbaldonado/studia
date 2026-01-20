@@ -1,12 +1,14 @@
 -- Base tables migration
 -- This file creates all the core tables required by the application
--- Run this BEFORE the other migration files (01-05)
+-- Run this FIRST before any other migration files
 
 -- Profile table: Stores user profile information
 CREATE TABLE IF NOT EXISTS profile (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
   rating REAL DEFAULT 7.5,
   metadata JSONB DEFAULT '{}'::jsonb,
+  username TEXT,
+  profile_picture_url TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -29,6 +31,31 @@ CREATE POLICY "Users can insert own profile" ON profile
 
 -- Indexes for profile
 CREATE INDEX IF NOT EXISTS idx_profile_rating ON profile(rating);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_profile_username ON profile(username) 
+WHERE username IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_profile_username_lower ON profile(LOWER(username))
+WHERE username IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_profile_picture_url ON profile(profile_picture_url) 
+WHERE profile_picture_url IS NOT NULL;
+
+-- Add check constraint for username format
+-- Username must be 3-30 characters, alphanumeric + underscore/hyphen, start and end with alphanumeric
+ALTER TABLE profile
+DROP CONSTRAINT IF EXISTS check_username_format;
+
+ALTER TABLE profile
+ADD CONSTRAINT check_username_format 
+CHECK (
+  username IS NULL OR (
+    LENGTH(username) >= 3 AND
+    LENGTH(username) <= 30 AND
+    username ~ '^[a-z0-9][a-z0-9_\-]*$' AND
+    username ~ '[a-z0-9]$'
+  )
+);
+
+-- Add comment for profile_picture_url
+COMMENT ON COLUMN profile.profile_picture_url IS 'URL/path to user profile picture in Supabase Storage (profile-pictures bucket)';
 
 -- Course table: Stores course information
 CREATE TABLE IF NOT EXISTS course (
@@ -118,6 +145,9 @@ CREATE TABLE IF NOT EXISTS quiz (
   user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
   data JSONB NOT NULL,
   rating REAL DEFAULT 0,
+  likes INTEGER DEFAULT 0,
+  dislikes INTEGER DEFAULT 0,
+  pdf_id UUID REFERENCES course_pdfs(id) ON DELETE SET NULL,
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -147,6 +177,13 @@ CREATE INDEX IF NOT EXISTS idx_quiz_course_id ON quiz(course_id);
 CREATE INDEX IF NOT EXISTS idx_quiz_user_id ON quiz(user_id);
 CREATE INDEX IF NOT EXISTS idx_quiz_rating ON quiz(rating DESC);
 CREATE INDEX IF NOT EXISTS idx_quiz_created_at ON quiz(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_quiz_likes ON quiz(likes DESC);
+CREATE INDEX IF NOT EXISTS idx_quiz_dislikes ON quiz(dislikes DESC);
+CREATE INDEX IF NOT EXISTS idx_quiz_pdf_id ON quiz(pdf_id) 
+WHERE pdf_id IS NOT NULL;
+
+-- Add comment for pdf_id
+COMMENT ON COLUMN quiz.pdf_id IS 'References course_pdfs if this quiz was generated from a PDF, NULL if manually created';
 
 -- Tag table: Stores tags with scores for recommendation algorithm
 CREATE TABLE IF NOT EXISTS tag (
@@ -204,7 +241,7 @@ CREATE POLICY "Authenticated users can delete quiz tags" ON quiz_tag
 CREATE INDEX IF NOT EXISTS idx_quiz_tag_quiz_id ON quiz_tag(quiz_id);
 CREATE INDEX IF NOT EXISTS idx_quiz_tag_tag_id ON quiz_tag(tag_id);
 
--- Trigger to update updated_at timestamp for profile
+-- Triggers to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_profile_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -218,7 +255,6 @@ CREATE TRIGGER profile_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_profile_updated_at();
 
--- Trigger to update updated_at timestamp for course
 CREATE OR REPLACE FUNCTION update_course_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -232,7 +268,6 @@ CREATE TRIGGER course_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_course_updated_at();
 
--- Trigger to update updated_at timestamp for quiz
 CREATE OR REPLACE FUNCTION update_quiz_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN

@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
         return NextResponse.json({ leaderboard: [] });
       }
 
-      // Get profiles of friends (including current user) with puzzle rush scores
+      // Get profiles of friends (including current user) with quiz rush scores
       const { data: profiles, error: profileError } = await supabase
         .from("profile")
         .select("id, metadata, username")
@@ -56,8 +56,8 @@ export async function GET(request: NextRequest) {
       // Build leaderboard from friends (including current user)
       const leaderboard = (profiles || [])
         .map((profile) => {
-          const metadata = profile.metadata as { puzzle_rush_best_score?: number; name?: string; [key: string]: unknown };
-          const score = metadata?.puzzle_rush_best_score || 0;
+          const metadata = profile.metadata as { quiz_rush_best_score?: number; name?: string; [key: string]: unknown };
+          const score = metadata?.quiz_rush_best_score || 0;
           const displayName = profile.username
             ? formatUsername(profile.username)
             : metadata?.name || `User ${profile.id.substring(0, 8)}`;
@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({ leaderboard });
     } else {
-      // Global leaderboard - get all profiles with puzzle rush scores
+      // Global leaderboard - get all profiles with quiz rush scores
       const { data: profiles, error: profileError } = await supabase
         .from("profile")
         .select("id, metadata, username");
@@ -89,8 +89,8 @@ export async function GET(request: NextRequest) {
       // Build global leaderboard
       const leaderboard = (profiles || [])
         .map((profile) => {
-          const metadata = profile.metadata as { puzzle_rush_best_score?: number; name?: string; [key: string]: unknown };
-          const score = metadata?.puzzle_rush_best_score || 0;
+          const metadata = profile.metadata as { quiz_rush_best_score?: number; name?: string; [key: string]: unknown };
+          const score = metadata?.quiz_rush_best_score || 0;
           const displayName = profile.username
             ? formatUsername(profile.username)
             : metadata?.name || `User ${profile.id.substring(0, 8)}`;

@@ -89,6 +89,6 @@ The app is configured for Vercel deployment. Make sure all environment variables
 - Create flashcards, quizzes, and sticky notes from PDF content with AI or create them yourself
 - Follow courses and friends
 - Track learning streaks
-- Puzzle Rush game with leaderboards
+- Quiz Rush game with leaderboards
 - Comment system to interact with posts created by other users
 - Profile pages with course and post management

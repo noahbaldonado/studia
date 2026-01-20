@@ -40,7 +40,7 @@ export default async function OtherUserProfilePage({
     : metadata?.name || `User ${id.substring(0, 8)}`;
   const userRating = Math.min(10, profile.rating || 7.5);
   const currentStreak = metadata?.current_streak || 0;
-  const puzzleRushBestScore = metadata?.puzzle_rush_best_score || 0;
+  const quizRushBestScore = metadata?.quiz_rush_best_score || 0;
 
   // Get counts
   const { count: coursesCount } = await supabase
@@ -104,7 +104,7 @@ export default async function OtherUserProfilePage({
         <div className="p-4 rounded-lg border border-zinc-200 bg-zinc-50">
           <h3 className="text-sm font-semibold text-zinc-600 mb-1">Quiz Rush Best Score</h3>
           <p className="text-3xl font-bold text-purple-600">
-            {puzzleRushBestScore} {puzzleRushBestScore === 1 ? "point" : "points"}
+            {quizRushBestScore} {quizRushBestScore === 1 ? "point" : "points"}
           </p>
         </div>
       </section>

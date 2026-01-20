@@ -41,12 +41,12 @@ export async function POST(request: NextRequest) {
     }
 
     const metadata = (profileData?.metadata as any) || {};
-    const currentBestScore = metadata.puzzle_rush_best_score || 0;
+    const currentBestScore = metadata.quiz_rush_best_score || 0;
 
     // Update best score if this is higher
     const updatedMetadata = {
       ...metadata,
-      puzzle_rush_best_score: Math.max(currentBestScore, score),
+      quiz_rush_best_score: Math.max(currentBestScore, score),
     };
 
     // Update profile metadata
@@ -66,7 +66,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       score,
-      bestScore: updatedMetadata.puzzle_rush_best_score,
+      bestScore: updatedMetadata.quiz_rush_best_score,
     });
   } catch (error) {
     console.error("Error in save-score route:", error);

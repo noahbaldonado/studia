@@ -1,122 +1,104 @@
 # Database Migration Scripts
 
-This directory contains SQL migration scripts for the quiz scoring system.
+This directory contains SQL migration scripts for the Studia application. These scripts should be run sequentially in your Supabase database.
 
 ## Running the Migrations
 
 These scripts should be run in your Supabase database. You can execute them via:
 
-1. **Supabase Dashboard**: Go to SQL Editor and run each script
+1. **Supabase Dashboard**: Go to SQL Editor and run each script in order
 2. **Supabase CLI**: Use `supabase db push` if you have migrations set up
 3. **Direct SQL connection**: Connect to your database and run the scripts
 
 ## Migration Order
 
-**IMPORTANT**: Run the migrations in this exact order. The base tables migration must be run first as all other migrations depend on these tables.
+**IMPORTANT**: Run the migrations in this exact order. Each migration depends on the previous ones.
 
-1. **`00_create_base_tables.sql`** - **Run this FIRST!** Creates all core tables: `profile`, `course`, `course_subscription`, `course_pdfs`, `quiz`, `tag`, and `quiz_tag`
-2. `01_create_increment_tag_scores_function.sql` - Creates function to update tag scores atomically
-3. `02_create_get_scored_quizzes_with_tags_function.sql` - Creates function to get scored quizzes filtered by subscriptions
-4. `03_create_comment_tables.sql` - Creates comment and comment_like tables for quiz commenting system
-5. `04_create_quiz_interaction_table.sql` - Creates quiz_interaction table to track which quizzes users have liked/disliked
-6. `05_create_follow_table.sql` - Creates follow table to track user relationships (who follows whom)
-7. `06_add_username_to_profile.sql` - Adds username column to profile table with validation
-8. `08_remove_deleted_at_from_profile.sql` - Removes deleted_at column (migration 07 was removed, this is the final cleanup)
-9. `09_add_pdf_source_to_quiz.sql` - Adds pdf_id column to quiz table to track PDF source
-10. `10_update_get_scored_quizzes_with_tags_author_info.sql` - Updates RPC function to include author and PDF owner information
-11. `11_seed_sample_courses.sql` - **Optional seed script** - Adds 10 sample courses for testing. Run this in Supabase SQL Editor after setting up your database.
-12. `12_create_storage_bucket_policies.sql` - **Required if using PDF uploads** - Sets up RLS policies for the 'course-pdfs' storage bucket. Run this after creating the bucket in Supabase Storage.
-13. `13_create_poll_vote_table.sql` - Creates the `poll_vote` table to track votes on poll content. Required for poll functionality.
-14. `14_add_likes_dislikes_to_quiz.sql` - Adds `likes` and `dislikes` columns to quiz table and migrates existing data from `quiz_interaction` table.
-15. `15_update_scoring_with_recency.sql` - Updates scoring function with recency (exponential decay), normalization, and randomization. New algorithm: 35% tag scores + 25% user rating + 25% recency + 15% randomization.
-16. `17_add_interaction_score.sql` - **Run BEFORE migration 16!** Adds `interaction_score` column to quiz table to track overall engagement (views, flips, answers, votes, etc.)
-17. `16_update_interaction_tracking.sql` - Updates interaction tracking to be more general (any row in quiz_interaction = interacted) and updates scoring function to include `interaction_score`. Requires migration 17 to be run first.
+### Required Migrations
 
-## Base Tables (00_create_base_tables.sql)
+1. **`01_base_tables.sql`** - **Run this FIRST!**
+   - Creates all core tables: `profile`, `course`, `course_subscription`, `course_pdfs`, `quiz`, `tag`, `quiz_tag`
+   - Includes all columns: `username`, `profile_picture_url`, `pdf_id`, `likes`, `dislikes`
+   - Sets up RLS policies and indexes
+   - Creates triggers for `updated_at` timestamps
 
-This migration creates all the core tables required by the application:
+2. **`02_functions.sql`** - **Run AFTER base tables**
+   - Creates `increment_tag_scores()` function for atomic tag score updates
+   - Creates `increment_user_interaction_score()` function for view time tracking
+   - Creates `get_scored_quizzes_with_tags()` function for the recommendation algorithm
+   - Algorithm: 20% tag scores + 15% user rating + 45% recency + 20% total interaction score
+   - Uses per-user interaction scores (0-10) to penalize already-interacted posts
 
-### `profile` Table
-- Stores user profile information
-- Columns: `id` (UUID, FK to auth.users), `rating` (REAL), `metadata` (JSONB)
-- Automatically created in auth callback, but table must exist first
-- RLS enabled: Anyone can read, users can update their own
+3. **`03_additional_tables.sql`** - **Run AFTER functions**
+   - Creates `comment` and `comment_like` tables for commenting system
+   - Creates `quiz_interaction` table with `interaction_score` column (0-10)
+   - Creates `follow` table for user relationships
+   - Creates `poll_vote` table for poll voting
+   - Sets up RLS policies and indexes for all tables
 
-### `course` Table
-- Stores course information
-- Columns: `id` (UUID), `name` (TEXT), `subject` (TEXT), `course_link` (TEXT)
-- RLS enabled: Anyone can read
+4. **`04_storage_policies.sql`** - **Run AFTER creating storage buckets**
+   - Sets up RLS policies for `course-pdfs` bucket (public read, authenticated write)
+   - Sets up RLS policies for `profile-pictures` bucket (public read, user-specific write)
+   - **Note**: You must create these buckets in Supabase Dashboard → Storage first
 
-### `course_subscription` Table
-- Tracks which users are subscribed to which courses
-- Columns: `user_id` (UUID), `course_id` (UUID)
-- Primary key: (user_id, course_id)
-- RLS enabled: Anyone can read, users can manage their own subscriptions
+### Optional Migrations
 
-### `course_pdfs` Table
-- Stores metadata for uploaded PDF files
-- Columns: `id` (UUID), `course_id` (UUID), `user_id` (UUID), `name` (TEXT), `file_path` (TEXT)
-- RLS enabled: Anyone can read, users can upload/delete their own PDFs
+5. **`05_seed_sample_courses.sql`** - **Optional seed script**
+   - Adds 10 sample Computer Science courses for testing
+   - Can be run after migrations are complete
+   - Uses `INSERT ... WHERE NOT EXISTS` to avoid duplicates
 
-### `quiz` Table
-- Stores quiz, flashcard, sticky note, and other post types
-- Columns: `id` (UUID), `course_id` (UUID), `user_id` (UUID), `data` (JSONB), `rating` (REAL)
-- RLS enabled: Anyone can read, users can manage their own quizzes
+## Database Schema Overview
 
-### `tag` Table
-- Stores tags with scores for recommendation algorithm
-- Columns: `id` (BIGSERIAL), `name` (TEXT, UNIQUE), `score` (DOUBLE PRECISION)
-- RLS enabled: Anyone can read, authenticated users can create/update
+### Core Tables
 
-### `quiz_tag` Table
-- Junction table linking quizzes to tags
-- Columns: `quiz_id` (UUID), `tag_id` (BIGINT)
-- Primary key: (quiz_id, tag_id)
-- RLS enabled: Anyone can read, authenticated users can manage
+- **`profile`**: User profiles with username, rating, profile picture URL
+- **`course`**: Course information (name, subject, course link)
+- **`course_subscription`**: Many-to-many relationship between users and courses
+- **`course_pdfs`**: Metadata for uploaded PDF files
+- **`quiz`**: Posts (quizzes, flashcards, sticky notes, polls, open questions) with likes/dislikes
+- **`tag`**: Tags with scores for recommendation algorithm
+- **`quiz_tag`**: Junction table linking quizzes to tags
 
-## What These Functions Do
+### Additional Tables
 
-### `increment_tag_scores(tag_ids, score_delta)`
-- Atomically updates multiple tag scores
-- Used when a quiz is liked/disliked to update all associated tags
-- Parameters:
-  - `tag_ids`: Array of tag IDs (BIGINT[])
-  - `score_delta`: Amount to add/subtract from scores (DOUBLE PRECISION)
+- **`comment`**: Comments on posts with parent-child relationships
+- **`comment_like`**: Likes/dislikes on comments
+- **`quiz_interaction`**: User interactions with posts (likes, dislikes, interaction scores)
+- **`follow`**: User follow relationships
+- **`poll_vote`**: Votes on poll content
 
-### `get_scored_quizzes_with_tags(p_user_id, p_limit)`
-- Returns quizzes with calculated scores, filtered by user subscriptions
-- **Excludes quizzes the user has already liked/disliked** (via quiz_interaction table)
-- Calculates score as: `0.5 * rating + 0.4 * sum(tag scores) + 0.1 * user score`
-- Orders results by `final_score` descending
-- Includes tags as JSONB array
-- Parameters:
-  - `p_user_id`: User ID to filter subscriptions (UUID)
-  - `p_limit`: Maximum number of quizzes to return (INT, default 50)
+### Functions
 
-### `quiz_interaction` Table
-- Tracks which quizzes each user has liked or disliked
-- Prevents showing the same quiz to a user after they've interacted with it
-- Schema:
-  - `quiz_id` (UUID, FK to quiz)
-  - `user_id` (UUID, FK to auth.users)
-  - `is_like` (BOOLEAN) - true for like, false for dislike
-  - `created_at`, `updated_at` (TIMESTAMPTZ)
-  - Primary key: (quiz_id, user_id)
-- RLS policies ensure users can only read/modify their own interactions
+- **`increment_tag_scores(tag_ids, score_delta)`**: Atomically updates multiple tag scores
+- **`increment_user_interaction_score(quiz_id, user_id, increment)`**: Increments user's interaction score (capped at 10)
+- **`get_scored_quizzes_with_tags(user_id, limit)`**: Returns scored quizzes filtered by subscriptions
 
-### `follow` Table
-- Tracks user relationships (who follows whom)
-- Schema:
-  - `follower_id` (UUID, FK to auth.users) - The user who is following
-  - `following_id` (UUID, FK to auth.users) - The user being followed
-  - `created_at` (TIMESTAMPTZ)
-  - Primary key: (follower_id, following_id)
-  - Constraint: Users cannot follow themselves
-- RLS policies:
-  - Anyone can read follow relationships
-  - Users can create their own follow relationships (follow others)
-  - Users can delete their own follow relationships (unfollow)
+## Storage Buckets
+
+Before running `04_storage_policies.sql`, create these buckets in Supabase Dashboard → Storage:
+
+1. **`course-pdfs`**: Public bucket for course PDF files
+   - Public read access
+   - Authenticated users can upload/update/delete
+
+2. **`profile-pictures`**: Public bucket for user profile pictures
+   - Public read access
+   - Users can only upload/update/delete their own pictures (based on folder structure)
 
 ## Permissions
 
 All functions are granted EXECUTE permission to the `authenticated` role, so any authenticated user can call them.
+
+RLS policies ensure:
+- Users can only modify their own data
+- Public read access where appropriate
+- Authenticated users can create content
+- Users can manage their own subscriptions and interactions
+
+## Notes
+
+- All migrations use `IF NOT EXISTS` and `DROP ... IF EXISTS` to allow safe re-running
+- Migrations are idempotent (can be run multiple times safely)
+- The recommendation algorithm prioritizes new content (45% recency weight)
+- User interaction scores penalize already-interacted posts to improve feed diversity

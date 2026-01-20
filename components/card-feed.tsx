@@ -1,12 +1,16 @@
 "use client";
 
+"use client";
+
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
-import { CheckCircle2, Heart, HeartOff, ThumbsDown } from "lucide-react";
+import Image from "next/image";
+import { CheckCircle2, Heart, HeartOff, ThumbsDown, Bot, User } from "lucide-react";
 import { QuizComments } from "./quiz-comments";
 import { formatUsername } from "@/lib/utils";
+import { SortMode } from "@/components/feed-sort-filter-controls";
 
 interface QuizData {
   type: "quiz";
@@ -69,12 +73,12 @@ interface Quiz {
   has_interacted?: boolean; // true if user has interacted in any way (like, dislike, or view-time)
   user_id?: string | null; // Author user ID
   author_username?: string | null;
+  author_profile_picture_url?: string | null;
   pdf_id?: string | null;
   pdf_owner_id?: string | null; // PDF owner user ID
   pdf_owner_username?: string | null;
+  pdf_owner_profile_picture_url?: string | null;
 }
-
-import { SortMode } from "@/components/feed-sort-filter-controls";
 
 interface CardFeedProps {
   courseFilter?: string[] | string | null;
@@ -231,7 +235,7 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
             // Get profiles for authors
             const { data: authorProfiles } = await supabase
               .from("profile")
-              .select("id, username")
+              .select("id, username, profile_picture_url")
               .in("id", userIds);
             
             // Get course names
@@ -243,7 +247,7 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
             const courseMap = new Map((courses || []).map((c: any) => [c.id, c.name]));
             
             // Get PDFs and their owners
-            let pdfOwners: Record<string, { owner_id: string; username: string | null }> = {};
+            let pdfOwners: Record<string, { owner_id: string; username: string | null; profile_picture_url: string | null }> = {};
             if (pdfIds.length > 0) {
               const { data: pdfs } = await supabase
                 .from("course_pdfs")
@@ -254,22 +258,23 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
                 const pdfOwnerIds = [...new Set(pdfs.map((p: any) => p.user_id))];
                 const { data: pdfOwnerProfiles } = await supabase
                   .from("profile")
-                  .select("id, username")
+                  .select("id, username, profile_picture_url")
                   .in("id", pdfOwnerIds);
                 
                 if (pdfOwnerProfiles) {
-                  const pdfOwnerMap = new Map(pdfOwnerProfiles.map((p: any) => [p.id, p.username]));
+                  const pdfOwnerMap = new Map(pdfOwnerProfiles.map((p: any) => [p.id, { username: p.username, profile_picture_url: p.profile_picture_url }]));
                   pdfs.forEach((pdf: any) => {
                     pdfOwners[pdf.id] = {
                       owner_id: pdf.user_id,
-                      username: pdfOwnerMap.get(pdf.user_id) || null,
+                      username: pdfOwnerMap.get(pdf.user_id)?.username || null,
+                      profile_picture_url: pdfOwnerMap.get(pdf.user_id)?.profile_picture_url || null,
                     };
                   });
                 }
               }
             }
             
-            const authorMap = new Map((authorProfiles || []).map((p: any) => [p.id, p.username]));
+            const authorMap = new Map((authorProfiles || []).map((p: any) => [p.id, { username: p.username, profile_picture_url: p.profile_picture_url }]));
             
             // Get user interactions for all quizzes to determine is_like state and interaction score
             const quizIds = fallbackData.map((q: any) => q.id);
@@ -325,10 +330,12 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
                 has_interacted: userInteraction !== undefined,
                 user_interaction_score: userInteraction?.interaction_score ?? 0,
                 user_id: quiz.user_id || null,
-                author_username: authorMap.get(quiz.user_id) || null,
+                author_username: authorMap.get(quiz.user_id)?.username || null,
+                author_profile_picture_url: authorMap.get(quiz.user_id)?.profile_picture_url || null,
                 pdf_id: quiz.pdf_id || null,
                 pdf_owner_id: quiz.pdf_id && pdfOwners[quiz.pdf_id] ? pdfOwners[quiz.pdf_id].owner_id : null,
                 pdf_owner_username: quiz.pdf_id && pdfOwners[quiz.pdf_id] ? pdfOwners[quiz.pdf_id].username : null,
+                pdf_owner_profile_picture_url: quiz.pdf_id && pdfOwners[quiz.pdf_id] ? pdfOwners[quiz.pdf_id].profile_picture_url : null,
               } as Quiz;
             });
             
@@ -410,9 +417,11 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
           tags?: Array<{ name: string; score?: number }>;
           user_id: string;
           author_username?: string | null;
+          author_profile_picture_url?: string | null;
           pdf_id?: string | null;
           pdf_owner_id?: string | null;
           pdf_owner_username?: string | null;
+          pdf_owner_profile_picture_url?: string | null;
         }
         
         // Get course names for RPC data (if not already included in response)
@@ -450,9 +459,11 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
             user_interaction_score: quiz.user_interaction_score ?? 0,
             user_id: quiz.user_id || null,
             author_username: quiz.author_username || null,
+            author_profile_picture_url: quiz.author_profile_picture_url || null,
             pdf_id: quiz.pdf_id || null,
             pdf_owner_id: quiz.pdf_owner_id || null,
             pdf_owner_username: quiz.pdf_owner_username || null,
+            pdf_owner_profile_picture_url: quiz.pdf_owner_profile_picture_url || null,
           } as Quiz;
         });
 
@@ -1070,31 +1081,62 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
                 : "border-[hsl(var(--border))]"
             }`}>
               <div className="flex items-center justify-between mb-1.5">
-                <div className="text-xs font-medium text-[hsl(var(--muted-foreground))]">
-                  {card.pdf_id && card.pdf_owner_username ? (
-                    <>
-                      Created from{" "}
-                      <Link 
-                        href={`/protected/profile/${card.user_id}`}
-                        className="hover:opacity-80 transition-opacity underline"
-                      >
-                        {formatUsername(card.pdf_owner_username)}
-                      </Link>
-                      's notes
-                    </>
-                  ) : card.author_username ? (
-                    <>
-                      Created by{" "}
-                      <Link 
-                        href={`/protected/profile/${card.user_id}`}
-                        className="hover:opacity-80 transition-opacity underline"
-                      >
-                        {formatUsername(card.author_username)}
-                      </Link>
-                    </>
-                  ) : (
-                    "Created by Unknown User"
-                  )}
+                <div className="flex items-center gap-2">
+                  <div className="relative w-5 h-5 flex-shrink-0">
+                    {(card.author_profile_picture_url || card.pdf_owner_profile_picture_url) ? (
+                      <>
+                        <div className="relative w-5 h-5 rounded-full overflow-hidden border border-[hsl(var(--border))]">
+                          <Image
+                            src={card.pdf_owner_profile_picture_url || card.author_profile_picture_url || ""}
+                            alt="Profile"
+                            fill
+                            className="object-cover"
+                            unoptimized
+                          />
+                        </div>
+                        {card.pdf_id && (
+                          <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[hsl(var(--background))] border border-[hsl(var(--border))] flex items-center justify-center">
+                            <Bot className="w-2 h-2 text-[hsl(var(--primary))]" />
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="relative w-5 h-5 rounded-full overflow-hidden border border-[hsl(var(--border))] bg-[hsl(var(--muted))] flex items-center justify-center">
+                        <User className="w-3 h-3 text-[hsl(var(--muted-foreground))]" />
+                        {card.pdf_id && (
+                          <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[hsl(var(--background))] border border-[hsl(var(--border))] flex items-center justify-center">
+                            <Bot className="w-2 h-2 text-[hsl(var(--primary))]" />
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-xs font-medium text-[hsl(var(--muted-foreground))]">
+                    {card.pdf_id && card.pdf_owner_username ? (
+                      <>
+                        Created from{" "}
+                        <Link 
+                          href={`/protected/profile/${card.pdf_owner_id}`}
+                          className="hover:opacity-80 transition-opacity underline"
+                        >
+                          {formatUsername(card.pdf_owner_username)}
+                        </Link>
+                        's notes
+                      </>
+                    ) : card.author_username ? (
+                      <>
+                        Created by{" "}
+                        <Link 
+                          href={`/protected/profile/${card.user_id}`}
+                          className="hover:opacity-80 transition-opacity underline"
+                        >
+                          {formatUsername(card.author_username)}
+                        </Link>
+                      </>
+                    ) : (
+                      "Created by Unknown User"
+                    )}
+                  </div>
                 </div>
                 <p className="text-xs text-[hsl(var(--muted-foreground))]">
                   {formatRelativeTime(card.created_at)}

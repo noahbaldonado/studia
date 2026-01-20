@@ -3,6 +3,7 @@ import { requireUsername } from "@/lib/auth-utils";
 import { LogoutButton } from "@/components/logout-button";
 import { UsernameSection } from "@/components/username-section";
 import { DeleteUserButton } from "@/components/delete-user-button";
+import { ProfilePictureUpload } from "@/components/profile-picture-upload";
 import { formatUsername } from "@/lib/utils";
 import Link from "next/link";
 
@@ -16,7 +17,7 @@ export default async function UserProfilePage() {
   // Get profile data to fetch actual rating
   const { data: profile, error: profileError } = await supabase
     .from("profile")
-    .select("rating, metadata, username")
+    .select("rating, metadata, username, profile_picture_url")
     .eq("id", user.id)
     .single();
 
@@ -26,7 +27,7 @@ export default async function UserProfilePage() {
     : metadata?.name || user.user_metadata?.full_name || "Profile";
   const userRating = Math.min(10, profile?.rating || 7.5);
   const currentStreak = metadata?.current_streak || 0;
-  const puzzleRushBestScore = metadata?.puzzle_rush_best_score || 0;
+  const quizRushBestScore = metadata?.quiz_rush_best_score || 0;
 
   // Get counts
   const { count: coursesCount } = await supabase
@@ -51,11 +52,19 @@ export default async function UserProfilePage() {
 
   return (
     <div className="px-4 py-6 pb-24">
-      <header className="flex justify-between items-center border-b border-[hsl(var(--border))] pb-5 mb-7">
+      <header className="flex justify-between items-start border-b border-[hsl(var(--border))] pb-5 mb-7">
         <div className="flex-1">
-          <h1 className="text-3xl font-bold text-foreground tracking-tight mb-2">{displayName || "Profile"}</h1>
-          <div className="text-sm text-[hsl(var(--muted-foreground))]">
-            <UsernameSection currentUsername={profile?.username || null} />
+          <div className="flex items-start gap-4 mb-4">
+            <ProfilePictureUpload
+              currentPictureUrl={profile?.profile_picture_url || null}
+              userId={user.id}
+            />
+            <div className="flex-1">
+              <h1 className="text-3xl font-bold text-foreground tracking-tight mb-2">{displayName || "Profile"}</h1>
+              <div className="text-sm text-[hsl(var(--muted-foreground))]">
+                <UsernameSection currentUsername={profile?.username || null} />
+              </div>
+            </div>
           </div>
         </div>
         <LogoutButton />
@@ -103,10 +112,10 @@ export default async function UserProfilePage() {
           <div className="p-6 border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))]">
             <h3 className="text-xs font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-3">Quiz Rush Best</h3>
             <p className="text-4xl font-bold text-foreground tracking-tight">
-              {puzzleRushBestScore}
+              {quizRushBestScore}
             </p>
             <p className="text-sm font-medium text-[hsl(var(--muted-foreground))] mt-1">
-              {puzzleRushBestScore === 1 ? "point" : "points"}
+              {quizRushBestScore === 1 ? "point" : "points"}
             </p>
           </div>
         </div>

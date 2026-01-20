@@ -11,12 +11,12 @@ interface LeaderboardEntry {
   rank: number;
 }
 
-interface PuzzleRushLeaderboardProps {
+interface QuizRushLeaderboardProps {
   isOpen: boolean;
   onClose: () => void;
 }
 
-export function PuzzleRushLeaderboard({ isOpen, onClose }: PuzzleRushLeaderboardProps) {
+export function QuizRushLeaderboard({ isOpen, onClose }: QuizRushLeaderboardProps) {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [type, setType] = useState<"global" | "friends">("global");
@@ -30,7 +30,7 @@ export function PuzzleRushLeaderboard({ isOpen, onClose }: PuzzleRushLeaderboard
   const loadLeaderboard = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/puzzle-rush/leaderboard?type=${type}`);
+      const response = await fetch(`/api/quiz-rush/leaderboard?type=${type}`);
       if (!response.ok) {
         console.error("Error loading leaderboard");
         return;
