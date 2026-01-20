@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { UserPlus, UserMinus } from "lucide-react";
 import { Button } from "./ui/button";
 
 interface FollowButtonProps {
@@ -47,20 +48,28 @@ export function FollowButton({ targetUserId }: FollowButtonProps) {
   }, [targetUserId, supabase]);
 
   const handleToggle = async () => {
+    // Optimistically update the state immediately
+    const previousState = isFollowing;
+    setIsFollowing(!previousState);
     setUpdating(true);
+    
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+      if (!user) {
+        // Revert on error
+        setIsFollowing(previousState);
+        return;
+      }
 
-      if (isFollowing) {
+      if (previousState) {
         // Unfollow
         const response = await fetch(`/api/users/follow?followingId=${targetUserId}`, {
           method: "DELETE",
         });
 
-        if (response.ok) {
-          setIsFollowing(false);
-        } else {
+        if (!response.ok) {
+          // Revert on error
+          setIsFollowing(previousState);
           setNotification({ message: "Failed to unfollow. Please try again.", type: "error" });
           setTimeout(() => setNotification(null), 3000);
         }
@@ -74,15 +83,17 @@ export function FollowButton({ targetUserId }: FollowButtonProps) {
           body: JSON.stringify({ followingId: targetUserId }),
         });
 
-        if (response.ok) {
-          setIsFollowing(true);
-        } else {
+        if (!response.ok) {
+          // Revert on error
+          setIsFollowing(previousState);
           setNotification({ message: "Failed to follow. Please try again.", type: "error" });
           setTimeout(() => setNotification(null), 3000);
         }
       }
     } catch (err) {
       console.error("Error toggling follow:", err);
+      // Revert on error
+      setIsFollowing(previousState);
       setNotification({ message: "An error occurred. Please try again.", type: "error" });
       setTimeout(() => setNotification(null), 3000);
     } finally {
@@ -92,7 +103,7 @@ export function FollowButton({ targetUserId }: FollowButtonProps) {
 
   if (loading) {
     return (
-      <Button disabled className="w-full sm:w-auto">
+      <Button disabled variant="outline" className="w-full sm:w-auto">
         Loading...
       </Button>
     );
@@ -101,16 +112,23 @@ export function FollowButton({ targetUserId }: FollowButtonProps) {
   return (
     <div>
       <Button
+        key={isFollowing ? "unfollow" : "follow"}
         onClick={handleToggle}
         disabled={updating}
         variant={isFollowing ? "outline" : "default"}
         className="w-full sm:w-auto"
       >
-        {updating
-          ? "Updating..."
-          : isFollowing
-          ? "Unfollow"
-          : "Follow"}
+        {isFollowing ? (
+          <>
+            <UserMinus className="h-4 w-4 mr-2" />
+            <span>Unfollow</span>
+          </>
+        ) : (
+          <>
+            <UserPlus className="h-4 w-4 mr-2" />
+            <span>Follow</span>
+          </>
+        )}
       </Button>
       {notification && (
         <div className="mt-2 px-4 py-3 rounded-lg text-sm bg-red-50 text-red-800 border border-red-300">

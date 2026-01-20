@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
       // Get profiles of friends (including current user) with daily streaks
       const { data: profiles, error: profileError } = await supabase
         .from("profile")
-        .select("id, metadata, username")
+        .select("id, metadata, username, profile_picture_url")
         .in("id", userIdsToFetch);
 
       if (profileError) {
@@ -70,6 +70,7 @@ export async function GET(request: NextRequest) {
             id: profile.id,
             name: displayName,
             streak: streak,
+            profilePictureUrl: profile.profile_picture_url || null,
           };
         })
         .filter((entry) => entry.streak > 0) // Only include users with streaks
@@ -84,7 +85,7 @@ export async function GET(request: NextRequest) {
       // Global leaderboard - get all profiles with daily streaks
       const { data: profiles, error: profileError } = await supabase
         .from("profile")
-        .select("id, metadata, username");
+        .select("id, metadata, username, profile_picture_url");
 
       if (profileError) {
         console.error("Error fetching profiles:", profileError);
@@ -108,6 +109,7 @@ export async function GET(request: NextRequest) {
             id: profile.id,
             name: displayName,
             streak: streak,
+            profilePictureUrl: profile.profile_picture_url || null,
           };
         })
         .filter((entry) => entry.streak > 0) // Only include users with streaks

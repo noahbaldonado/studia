@@ -41,9 +41,15 @@ These scripts should be run in your Supabase database. You can execute them via:
    - Sets up RLS policies for `profile-pictures` bucket (public read, user-specific write)
    - **Note**: You must create these buckets in Supabase Dashboard → Storage first
 
+5. **`06_messages.sql`** - **Run AFTER additional tables**
+   - Creates `conversation` table for 1-on-1 conversations between users
+   - Creates `message` table for individual messages
+   - Sets up RLS policies and indexes
+   - Creates triggers to update conversation timestamps when messages are sent
+
 ### Optional Migrations
 
-5. **`05_seed_sample_courses.sql`** - **Optional seed script**
+6. **`05_seed_sample_courses.sql`** - **Optional seed script**
    - Adds 10 sample Computer Science courses for testing
    - Can be run after migrations are complete
    - Uses `INSERT ... WHERE NOT EXISTS` to avoid duplicates
@@ -67,6 +73,8 @@ These scripts should be run in your Supabase database. You can execute them via:
 - **`quiz_interaction`**: User interactions with posts (likes, dislikes, interaction scores)
 - **`follow`**: User follow relationships
 - **`poll_vote`**: Votes on poll content
+- **`conversation`**: 1-on-1 conversations between users
+- **`message`**: Individual messages in conversations
 
 ### Functions
 

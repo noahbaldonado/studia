@@ -152,6 +152,15 @@ export async function POST(request: NextRequest) {
     let newLikes = currentQuiz.likes || 0;
     let newDislikes = currentQuiz.dislikes || 0;
 
+    console.log("Before calculation:", {
+      currentLikes: newLikes,
+      currentDislikes: newDislikes,
+      existingInteraction: existingInteraction,
+      existingInteractionIsLike: existingInteraction?.is_like,
+      isLike,
+      isUndo,
+    });
+
     if (isUndo) {
       // Removing interaction
       if (existingInteraction?.is_like === true) {
@@ -159,8 +168,8 @@ export async function POST(request: NextRequest) {
       } else if (existingInteraction?.is_like === false) {
         newDislikes = Math.max(0, newDislikes - 1);
       }
-    } else if (existingInteraction) {
-      // Changing from like to dislike or vice versa
+    } else if (existingInteraction && existingInteraction.is_like !== null && existingInteraction.is_like !== undefined) {
+      // Changing from like to dislike or vice versa (existingInteraction exists and has a like/dislike value)
       if (existingInteraction.is_like === true && isLike === false) {
         // Was like, now dislike
         newLikes = Math.max(0, newLikes - 1);
@@ -170,14 +179,25 @@ export async function POST(request: NextRequest) {
         newDislikes = Math.max(0, newDislikes - 1);
         newLikes = newLikes + 1;
       }
+      // If existingInteraction.is_like === isLike, we already returned early above, so this shouldn't happen
     } else {
-      // New interaction
+      // New interaction (no existingInteraction OR existingInteraction.is_like is null/undefined)
+      // This includes cases where interaction exists but is_like is null (view-time only interaction)
+      console.log("Entering else block - new interaction");
+      console.log("Before increment - newLikes:", newLikes, "newDislikes:", newDislikes, "isLike:", isLike);
       if (isLike) {
         newLikes = newLikes + 1;
+        console.log("After increment likes - newLikes:", newLikes);
       } else {
         newDislikes = newDislikes + 1;
+        console.log("After increment dislikes - newDislikes:", newDislikes);
       }
     }
+
+    console.log("After calculation:", {
+      newLikes,
+      newDislikes,
+    });
 
     // Update likes/dislikes in database
     const { data, error: updateError } = await supabase
@@ -194,6 +214,11 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    console.log("Database update result:", {
+      returnedLikes: data.likes,
+      returnedDislikes: data.dislikes,
+    });
 
     // Update tag scores: ±0.2 for each tag associated with this quiz
     // Use actualRatingChange to handle toggle off and change scenarios correctly
@@ -307,6 +332,13 @@ export async function POST(request: NextRequest) {
         // Continue even if profile fetch fails
       }
     }
+
+    console.log("Returning response:", {
+      success: true,
+      quizId,
+      likes: data.likes,
+      dislikes: data.dislikes,
+    });
 
     return NextResponse.json({
       success: true,

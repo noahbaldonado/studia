@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
       // Get profile data for following users
       const { data: profiles, error: profileError } = await supabase
         .from("profile")
-        .select("id, metadata, username")
+        .select("id, metadata, username, profile_picture_url")
         .in("id", followingIds);
 
       if (profileError) {
@@ -47,14 +47,12 @@ export async function GET(request: NextRequest) {
       }
 
       const users = (profiles || []).map((profile) => {
-        const metadata = profile.metadata as { name?: string; email?: string; [key: string]: unknown };
-        const displayName = profile.username
-          ? formatUsername(profile.username)
-          : metadata?.name || `User ${profile.id.substring(0, 8)}`;
+        const metadata = profile.metadata as { name?: string; [key: string]: unknown };
         return {
           id: profile.id,
-          name: displayName,
-          email: metadata?.email || null,
+          name: metadata?.name || null,
+          username: profile.username || null,
+          profilePictureUrl: profile.profile_picture_url || null,
         };
       });
 
@@ -80,7 +78,7 @@ export async function GET(request: NextRequest) {
       // Get profile data for followers
       const { data: profiles, error: profileError } = await supabase
         .from("profile")
-        .select("id, metadata, username")
+        .select("id, metadata, username, profile_picture_url")
         .in("id", followerIds);
 
       if (profileError) {
@@ -89,14 +87,12 @@ export async function GET(request: NextRequest) {
       }
 
       const users = (profiles || []).map((profile) => {
-        const metadata = profile.metadata as { name?: string; email?: string; [key: string]: unknown };
-        const displayName = profile.username
-          ? formatUsername(profile.username)
-          : metadata?.name || `User ${profile.id.substring(0, 8)}`;
+        const metadata = profile.metadata as { name?: string; [key: string]: unknown };
         return {
           id: profile.id,
-          name: displayName,
-          email: metadata?.email || null,
+          name: metadata?.name || null,
+          username: profile.username || null,
+          profilePictureUrl: profile.profile_picture_url || null,
         };
       });
 

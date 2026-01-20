@@ -3,11 +3,14 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
+import Image from "next/image";
+import { User } from "lucide-react";
 
 interface User {
   id: string;
-  name: string;
-  email: string | null;
+  name: string | null;
+  username: string | null;
+  profilePictureUrl: string | null;
 }
 
 interface FollowListProps {
@@ -81,22 +84,40 @@ export function FollowList({ userId, type, limit = 5, showCount = false }: Follo
         </div>
       )}
       {displayedUsers.map((user) => {
-        const emailDisplay = user.email
-          ? user.email.replace("@ucsc.edu", "")
-          : "";
-
         return (
           <Link
             key={user.id}
             href={`/protected/profile/${user.id}`}
             className="block"
           >
-            <div className="flex items-center justify-between py-2 px-3 rounded-lg border border-blue-200 hover:bg-blue-50 hover:border-blue-300 transition-colors cursor-pointer bg-white">
-              <div className="flex-1">
-                <div className="font-medium text-blue-900">{user.name}</div>
-                {emailDisplay && (
-                  <div className="text-xs text-blue-600 mt-0.5">
-                    {emailDisplay}@ucsc.edu
+            <div className="flex items-center gap-3 py-2 px-3 rounded-lg border border-blue-200 hover:bg-blue-50 hover:border-blue-300 transition-colors cursor-pointer bg-white">
+              {/* Profile Picture */}
+              <div className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-blue-100">
+                {user.profilePictureUrl ? (
+                  <Image
+                    src={user.profilePictureUrl}
+                    alt={user.username || user.name || "User"}
+                    fill
+                    className="object-cover"
+                    sizes="40px"
+                  />
+                ) : (
+                  <User className="w-6 h-6 h-full w-full p-2 text-blue-600" />
+                )}
+              </div>
+              <div className="flex-1 min-w-0">
+                {user.username ? (
+                  <>
+                    <div className="font-medium text-blue-900 truncate">@{user.username}</div>
+                    {user.name && (
+                      <div className="text-xs text-blue-600 mt-0.5 truncate">
+                        {user.name}
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="font-medium text-blue-900 truncate">
+                    {user.name || `User ${user.id.substring(0, 8)}`}
                   </div>
                 )}
               </div>

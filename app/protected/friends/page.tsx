@@ -2,17 +2,23 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Search, X, UserPlus, UserMinus, ChevronRight } from "lucide-react";
+import { Search, X, UserPlus, UserMinus, ChevronRight, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 
 interface User {
   id: string;
   name: string;
-  email: string | null;
+  username: string | null;
+  profilePictureUrl: string | null;
 }
 
-interface SuggestedUser extends User {
+interface SuggestedUser {
+  id: string;
+  name: string;
+  username: string | null;
+  profilePictureUrl: string | null;
   mutualCourses: number;
 }
 
@@ -230,29 +236,50 @@ export default function FriendsPage() {
               ) : searchResults.length > 0 ? (
                 searchResults.map((user) => {
                   const isFollowing = followingMap.has(user.id);
-                  const emailDisplay = user.email
-                    ? user.email.replace("@ucsc.edu", "")
-                    : "";
 
                   return (
                     <div
                       key={user.id}
-                      className="flex items-center justify-between px-4 py-3 hover:bg-[hsl(var(--secondary))] transition-colors border-b border-[hsl(var(--border))] last:border-b-0"
+                      className="flex items-center gap-3 px-4 py-3 hover:bg-[hsl(var(--secondary))] transition-colors border-b border-[hsl(var(--border))] last:border-b-0"
                     >
+                      {/* Profile Picture */}
+                      <div className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-[hsl(var(--muted))]">
+                        {user.profilePictureUrl ? (
+                          <Image
+                            src={user.profilePictureUrl}
+                            alt={user.name}
+                            fill
+                            className="object-cover"
+                            sizes="40px"
+                          />
+                        ) : (
+                          <User className="w-6 h-6 h-full w-full p-2 text-[hsl(var(--muted-foreground))]" />
+                        )}
+                      </div>
                       <button
                         onClick={() => handleSelectUser(user)}
-                        className="flex-1 text-left"
+                        className="flex-1 text-left min-w-0"
                       >
-                        <div className="font-medium text-foreground text-sm">{user.name}</div>
-                        {emailDisplay && (
-                          <div className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
-                            {emailDisplay}@ucsc.edu
+                        {user.username ? (
+                          <>
+                            <div className="font-medium text-foreground text-sm truncate">
+                              @{user.username}
+                            </div>
+                            {user.name && (
+                              <div className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5 truncate">
+                                {user.name}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="font-medium text-foreground text-sm truncate">
+                            {user.name || `User ${user.id.substring(0, 8)}`}
                           </div>
                         )}
                       </button>
                       <button
                         onClick={() => handleFollow(user.id)}
-                        className="ml-4 flex items-center gap-1.5 px-3 py-1.5 border border-[hsl(var(--border))] hover:bg-[hsl(var(--secondary))] transition-colors text-xs font-medium text-foreground"
+                        className="ml-4 flex items-center gap-1.5 px-3 py-1.5 border border-[hsl(var(--border))] hover:bg-[hsl(var(--secondary))] transition-colors text-xs font-medium text-foreground flex-shrink-0"
                       >
                         {isFollowing ? (
                           <>
@@ -298,23 +325,34 @@ export default function FriendsPage() {
             <div className="space-y-2">
               {suggestedFriends.slice(0, 5).map((user) => {
                 const isFollowing = followingMap.has(user.id);
-                const emailDisplay = user.email
-                  ? user.email.replace("@ucsc.edu", "")
-                  : "";
 
                 return (
                   <div
                     key={user.id}
-                    className="flex items-center justify-between p-3 border border-[hsl(var(--border))] hover:bg-[hsl(var(--secondary))] transition-colors bg-[hsl(var(--card))]"
+                    className="flex items-center gap-3 p-3 border border-[hsl(var(--border))] hover:bg-[hsl(var(--secondary))] transition-colors bg-[hsl(var(--card))]"
                   >
+                    {/* Profile Picture */}
+                    <div className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-[hsl(var(--muted))]">
+                      {user.profilePictureUrl ? (
+                        <Image
+                          src={user.profilePictureUrl}
+                          alt={user.name}
+                          fill
+                          className="object-cover"
+                          sizes="40px"
+                        />
+                      ) : (
+                        <User className="w-6 h-6 h-full w-full p-2 text-[hsl(var(--muted-foreground))]" />
+                      )}
+                    </div>
                     <button
                       onClick={() => handleSelectUser(user)}
-                      className="flex-1 text-left"
+                      className="flex-1 text-left min-w-0"
                     >
-                      <div className="font-medium text-foreground text-sm">{user.name}</div>
-                      {emailDisplay && (
-                        <div className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5">
-                          {emailDisplay}@ucsc.edu
+                      <div className="font-medium text-foreground text-sm truncate">{user.name}</div>
+                      {user.username && (
+                        <div className="text-xs text-[hsl(var(--muted-foreground))] mt-0.5 truncate">
+                          @{user.username}
                         </div>
                       )}
                       <div className="text-xs text-[hsl(var(--primary))] mt-1">
@@ -323,7 +361,7 @@ export default function FriendsPage() {
                     </button>
                     <button
                       onClick={() => handleFollow(user.id)}
-                      className="ml-4 flex items-center gap-1.5 px-3 py-1.5 border border-[hsl(var(--border))] hover:bg-[hsl(var(--secondary))] transition-colors text-xs font-medium text-foreground"
+                      className="ml-4 flex items-center gap-1.5 px-3 py-1.5 border border-[hsl(var(--border))] hover:bg-[hsl(var(--secondary))] transition-colors text-xs font-medium text-foreground flex-shrink-0"
                     >
                       {isFollowing ? (
                         <>

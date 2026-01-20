@@ -1,14 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Trophy } from "lucide-react";
+import { Trophy, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import Image from "next/image";
 
 interface LeaderboardEntry {
   id: string;
   name: string;
   streak: number;
   rank: number;
+  profilePictureUrl?: string | null;
 }
 
 interface StreakLeaderboardProps {
@@ -100,8 +103,27 @@ export function StreakLeaderboard({ isOpen, onClose }: StreakLeaderboardProps) {
                     <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center font-bold text-sm text-blue-700">
                       {entry.rank}
                     </div>
+                    {/* Profile picture */}
+                    <div className="relative w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-[hsl(var(--muted))]">
+                      {entry.profilePictureUrl ? (
+                        <Image
+                          src={entry.profilePictureUrl}
+                          alt={entry.name}
+                          fill
+                          className="object-cover"
+                          sizes="32px"
+                        />
+                      ) : (
+                        <User className="w-5 h-5 h-full w-full p-1.5 text-[hsl(var(--muted-foreground))]" />
+                      )}
+                    </div>
                     <div>
-                      <div className="font-semibold text-blue-900">{entry.name}</div>
+                      <Link
+                        href={`/protected/profile/${entry.id}`}
+                        className="font-semibold text-blue-900 hover:text-blue-700 hover:underline"
+                      >
+                        {entry.name}
+                      </Link>
                     </div>
                   </div>
                   <div className="font-bold text-blue-600">

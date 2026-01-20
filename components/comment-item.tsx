@@ -2,12 +2,15 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { ThumbsUp, ThumbsDown, Reply, ChevronDown, ChevronRight, Edit2, Trash2, X, Check } from "lucide-react";
+import { ThumbsUp, ThumbsDown, Reply, ChevronDown, ChevronRight, Edit2, Trash2, X, Check, User } from "lucide-react";
+import Link from "next/link";
+import Image from "next/image";
 
 interface Comment {
   id: string;
   content: string;
   authorName: string;
+  authorProfilePictureUrl?: string | null;
   netLikes: number;
   userLike: boolean | null;
   created_at: string;
@@ -233,9 +236,32 @@ export function CommentItem({
       <div className="bg-blue-50 rounded-lg p-3">
         {/* Author and timestamp */}
         <div className="flex items-center gap-2 mb-2">
-          <span className="font-semibold text-sm text-blue-900">
-            {comment.authorName}
-          </span>
+          {/* Profile picture */}
+          <div className="relative w-6 h-6 rounded-full overflow-hidden flex-shrink-0 bg-[hsl(var(--muted))]">
+            {comment.authorProfilePictureUrl ? (
+              <Image
+                src={comment.authorProfilePictureUrl}
+                alt={comment.authorName}
+                fill
+                className="object-cover"
+                sizes="24px"
+              />
+            ) : (
+              <User className="w-4 h-4 h-full w-full p-1 text-[hsl(var(--muted-foreground))]" />
+            )}
+          </div>
+          {comment.userId ? (
+            <Link
+              href={`/protected/profile/${comment.userId}`}
+              className="font-semibold text-sm text-blue-900 hover:text-blue-700 hover:underline"
+            >
+              {comment.authorName}
+            </Link>
+          ) : (
+            <span className="font-semibold text-sm text-blue-900">
+              {comment.authorName}
+            </span>
+          )}
           <span className="text-xs text-blue-500">
             {formatTimeAgo(comment.created_at)}
           </span>

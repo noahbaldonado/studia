@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
-import { CheckCircle2, Heart, HeartOff, ThumbsDown, Bot, User } from "lucide-react";
+import { CheckCircle2, ThumbsUp, ThumbsDown, Bot, User } from "lucide-react";
 import { QuizComments } from "./quiz-comments";
 import { formatUsername } from "@/lib/utils";
 import { SortMode } from "@/components/feed-sort-filter-controls";
@@ -647,8 +647,8 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
             ? { 
                 ...c, 
                 is_like: null,
-                likes: result.likes ?? c.likes,
-                dislikes: result.dislikes ?? c.dislikes,
+                likes: result.likes !== undefined ? result.likes : c.likes,
+                dislikes: result.dislikes !== undefined ? result.dislikes : c.dislikes,
               }
             : c
         )
@@ -672,11 +672,52 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
     // Check if already has this exact interaction (clicking same button = toggle off)
     if (card.is_like === (isLike ? true : false)) {
       // Same interaction - remove it (toggle off)
-      return handleInteractionToggle(quizId);
+      await handleInteractionToggle(quizId);
+      return;
     }
 
     // Different interaction - update it
     setUpdatingCards((prev) => new Set(prev).add(quizId));
+
+    // Optimistically update the UI
+    const previousLike = card.is_like;
+    const previousLikes = card.likes || 0;
+    const previousDislikes = card.dislikes || 0;
+
+    // Calculate optimistic new counts
+    let optimisticLikes = previousLikes;
+    let optimisticDislikes = previousDislikes;
+
+    if (previousLike === null) {
+      // New interaction
+      if (isLike) {
+        optimisticLikes = previousLikes + 1;
+      } else {
+        optimisticDislikes = previousDislikes + 1;
+      }
+    } else if (previousLike === true && !isLike) {
+      // Changing from like to dislike
+      optimisticLikes = Math.max(0, previousLikes - 1);
+      optimisticDislikes = previousDislikes + 1;
+    } else if (previousLike === false && isLike) {
+      // Changing from dislike to like
+      optimisticDislikes = Math.max(0, previousDislikes - 1);
+      optimisticLikes = previousLikes + 1;
+    }
+
+    // Update state optimistically
+    setCards((prev) =>
+      prev.map((c) =>
+        c.id === quizId
+          ? { 
+              ...c, 
+              is_like: isLike ? true : false,
+              likes: optimisticLikes,
+              dislikes: optimisticDislikes,
+            }
+          : c
+      )
+    );
 
     try {
       const ratingChange = isLike ? 1 : -1;
@@ -695,26 +736,70 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
       if (!response.ok) {
         const error = await response.json();
         console.error("Error updating rating:", error);
+        // Revert optimistic update on error
+        setCards((prev) =>
+          prev.map((c) =>
+            c.id === quizId
+              ? { 
+                  ...c, 
+                  is_like: previousLike,
+                  likes: previousLikes,
+                  dislikes: previousDislikes,
+                }
+              : c
+          )
+        );
         return;
       }
 
       const result = await response.json();
 
-      // Update local state with new likes/dislikes
+      // Debug: Log the response
+      console.log("API response:", result);
+      console.log("Optimistic values:", { optimisticLikes, optimisticDislikes });
+
+      // Sync with server response - use server values if they exist, otherwise keep optimistic
+      setCards((prev) =>
+        prev.map((c) => {
+          if (c.id === quizId) {
+            const serverLikes = typeof result.likes === 'number' ? result.likes : null;
+            const serverDislikes = typeof result.dislikes === 'number' ? result.dislikes : null;
+            
+            console.log("Updating card:", {
+              quizId,
+              serverLikes,
+              serverDislikes,
+              optimisticLikes,
+              optimisticDislikes,
+              finalLikes: serverLikes !== null ? serverLikes : optimisticLikes,
+              finalDislikes: serverDislikes !== null ? serverDislikes : optimisticDislikes,
+            });
+            
+            return { 
+              ...c, 
+              is_like: isLike ? true : false,
+              likes: serverLikes !== null ? serverLikes : optimisticLikes,
+              dislikes: serverDislikes !== null ? serverDislikes : optimisticDislikes,
+            };
+          }
+          return c;
+        })
+      );
+    } catch (error) {
+      console.error("Error updating rating:", error);
+      // Revert optimistic update on error
       setCards((prev) =>
         prev.map((c) =>
           c.id === quizId
             ? { 
                 ...c, 
-                is_like: isLike ? true : false,
-                likes: result.likes ?? c.likes,
-                dislikes: result.dislikes ?? c.dislikes,
+                is_like: previousLike,
+                likes: previousLikes,
+                dislikes: previousDislikes,
               }
             : c
         )
       );
-    } catch (error) {
-      console.error("Error updating rating:", error);
     } finally {
       setUpdatingCards((prev) => {
         const next = new Set(prev);
@@ -1386,7 +1471,7 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
                       : "bg-[hsl(var(--secondary))] text-foreground hover:bg-[hsl(var(--muted))]"
                   } disabled:opacity-50 disabled:cursor-not-allowed`}
                 >
-                  <Heart
+                  <ThumbsUp
                     className={`h-3.5 w-3.5 ${card.is_like === true ? "fill-current" : ""}`}
                   />
                   <span>Like</span>
@@ -1414,15 +1499,6 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
                     </span>
                   );
                 })()}
-                {card.is_like !== null && (
-                  <button
-                    onClick={() => handleInteractionToggle(card.id)}
-                    disabled={isUpdating}
-                    className="ml-auto text-xs text-[hsl(var(--muted-foreground))] hover:text-foreground underline disabled:opacity-50"
-                  >
-                    Undo
-                  </button>
-                )}
               </div>
 
               {/* Comments Section */}

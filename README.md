@@ -49,18 +49,26 @@ The app uses Google OAuth for authentication, so make sure your Supabase project
 
 ### Database Setup
 
-The sql/ directory contains migration files that set up the database schema. Make sure to run them in order:
-- `00_create_base_tables.sql` - **Run this first!** Creates all core tables
-- `01_create_increment_tag_scores_function.sql`
-- `02_create_get_scored_quizzes_with_tags_function.sql`
-- `03_create_comment_tables.sql`
-- `04_create_quiz_interaction_table.sql`
-- `05_create_follow_table.sql`
-- `06_add_username_to_profile.sql`
-- `08_remove_deleted_at_from_profile.sql`
-- `09_add_pdf_source_to_quiz.sql`
-- `10_update_get_scored_quizzes_with_tags_author_info.sql`
-- `11_seed_sample_courses.sql` - **Optional** - Adds 10 sample courses for testing
+The sql/ directory contains consolidated migration files that set up the database schema. Run them in this exact order:
+
+1. **`01_base_tables.sql`** - **Run this FIRST!**
+   - Creates all core tables: `profile`, `course`, `course_subscription`, `course_pdfs`, `quiz`, `tag`, `quiz_tag`
+   - Includes username, profile picture, and all necessary columns
+
+2. **`02_functions.sql`** - Run after base tables
+   - Creates database functions for recommendation algorithm and interaction tracking
+
+3. **`03_additional_tables.sql`** - Run after functions
+   - Creates comment, interaction, follow, and poll tables
+
+4. **`04_storage_policies.sql`** - Run after creating storage buckets
+   - Sets up RLS policies for PDF and profile picture storage
+   - **Note**: Create `course-pdfs` and `profile-pictures` buckets in Supabase Dashboard → Storage first
+
+5. **`05_seed_sample_courses.sql`** - **Optional** - Adds 10 sample courses for testing
+
+6. **`06_messages.sql`** - Run after additional tables
+   - Creates messaging system tables for 1-on-1 conversations
 
 See `sql/README.md` for detailed information about each migration.
 
@@ -84,11 +92,31 @@ The app is configured for Vercel deployment. Make sure all environment variables
 
 ## Features
 
-- User authentication with Google Sign-In
-- Upload PDFs and generate study content automatically
-- Create flashcards, quizzes, and sticky notes from PDF content with AI or create them yourself
-- Follow courses and friends
-- Track learning streaks
-- Quiz Rush game with leaderboards
-- Comment system to interact with posts created by other users
-- Profile pages with course and post management
+### Core Features
+- **User Authentication**: Google Sign-In via Supabase Auth
+- **User Profiles**: Customizable usernames, profile pictures, and user ratings
+- **PDF Upload**: Upload course PDFs and automatically generate study content
+- **Content Generation**: AI-powered generation of quizzes, flashcards, sticky notes, and polls from PDFs
+- **Manual Content Creation**: Create quizzes, flashcards, sticky notes, and polls manually
+- **Feed System**: Algorithm-based or chronological feed of posts with sorting and filtering
+- **Courses**: Subscribe to courses and organize your study materials
+- **Social Features**: Follow other users, comment on posts, like/dislike content
+- **Messaging**: 1-on-1 direct messaging between users
+- **Search**: Search for users by username or name
+
+### Gamification
+- **Learning Streaks**: Track daily learning streaks with leaderboards
+- **Quiz Rush**: Timed quiz game with leaderboards
+- **User Ratings**: Algorithm-based user rating system
+
+### Content Types
+- **Quizzes**: Multiple choice questions with AI-generated explanations
+- **Flashcards**: Front/back cards for memorization
+- **Sticky Notes**: Quick reminders and notes
+- **Polls**: Opinion-based polls with voting and result tracking
+- **Open Questions**: Free-form questions for discussion
+
+### Algorithm Features
+- Personalized feed based on tag scores, user ratings, recency, and interaction history
+- Per-user interaction tracking (likes, dislikes, view time, quiz answers, poll votes)
+- Comment-based boosting (posts with more comments and replies are prioritized)

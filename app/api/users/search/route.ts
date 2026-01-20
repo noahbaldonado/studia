@@ -1,84 +1,104 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
-import { formatUsername, normalizeUsername } from "@/lib/utils";
-
-export const dynamic = 'force-dynamic';
+import { formatUsername } from "@/lib/utils";
 
 export async function GET(request: NextRequest) {
   try {
     const supabase = await createClient();
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
+
+    // Check authentication
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
 
     if (authError || !user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const searchParams = request.nextUrl.searchParams;
-    const query = searchParams.get("q")?.trim() || "";
+    const { searchParams } = new URL(request.url);
+    const query = searchParams.get("q");
 
-    if (!query || query.length < 2) {
+    if (!query || query.trim().length === 0) {
       return NextResponse.json({ users: [] });
     }
 
-    const searchLower = query.toLowerCase();
-    const normalizedQuery = normalizeUsername(query.toLowerCase());
+    const searchTerm = `%${query.trim()}%`;
 
-    // Get all profiles and filter by username, name, or email
-    const { data: profiles, error: profileError } = await supabase
-      .from("profile")
-      .select("id, metadata, username");
+    // Search for users by username, name (from metadata), and email (from metadata)
+    // We'll use separate queries and combine results since Supabase's .or() doesn't easily support JSONB fields
+    const [usernameResults, allProfiles] = await Promise.all([
+      // Search by username
+      supabase
+        .from("profile")
+        .select("id, username, profile_picture_url, metadata")
+        .neq("id", user.id)
+        .ilike("username", searchTerm)
+        .limit(20),
+      // Get all profiles to filter by metadata (we'll filter in memory for metadata fields)
+      supabase
+        .from("profile")
+        .select("id, username, profile_picture_url, metadata")
+        .neq("id", user.id)
+        .limit(100),
+    ]);
 
-    if (profileError) {
-      console.error("Error fetching profiles:", profileError);
-      return NextResponse.json({ error: "Failed to search users" }, { status: 500 });
+    if (usernameResults.error) {
+      console.error("Error searching users by username:", usernameResults.error);
+      return NextResponse.json(
+        { error: "Failed to search users" },
+        { status: 500 }
+      );
     }
 
-    // Filter profiles by username, name, or email
-    const matchingProfiles = (profiles || []).filter((profile) => {
-      const metadata = profile.metadata as { name?: string; email?: string; [key: string]: unknown };
-      const username = profile.username?.toLowerCase() || "";
-      const name = (metadata?.name || "").toLowerCase();
-      const email = (metadata?.email || "").toLowerCase();
-      
-      // Check if username matches (with or without @)
-      if (username && username.includes(normalizedQuery)) return true;
-      
-      // Check if name matches
-      if (name.includes(searchLower)) return true;
-      
-      // Check if email matches (including just the prefix before @)
-      // For UCSC emails like "username@ucsc.edu", match "username"
-      if (email) {
-        const emailPrefix = email.split("@")[0].toLowerCase();
-        if (emailPrefix.includes(searchLower) || searchLower.includes(emailPrefix)) return true;
-        if (email.includes(searchLower)) return true;
-      }
-      
-      return false;
+    // Filter profiles by name in metadata
+    const searchLower = query.trim().toLowerCase();
+    const metadataMatches = (allProfiles.data || []).filter((profile) => {
+      const metadata = profile.metadata as { name?: string; [key: string]: unknown } | null;
+      const nameMatch = metadata?.name?.toLowerCase().includes(searchLower);
+      return nameMatch;
     });
 
-    // Build results with profile data
-    const results = matchingProfiles
-      .map((profile) => {
-        const metadata = profile.metadata as { name?: string; email?: string; [key: string]: unknown };
-        const displayName = profile.username
-          ? formatUsername(profile.username)
-          : metadata?.name || `User ${profile.id.substring(0, 8)}`;
-        const email = metadata?.email || null;
-        
-        return {
-          id: profile.id,
-          name: displayName,
-          email: email,
-          username: profile.username || null,
-        };
-      })
-      .filter((u) => u.id !== user.id) // Exclude current user
-      .slice(0, 20); // Limit to 20 results
+    // Combine results and remove duplicates
+    const profileMap = new Map<string, typeof usernameResults.data[0]>();
+    
+    // Add username matches
+    (usernameResults.data || []).forEach((profile) => {
+      profileMap.set(profile.id, profile);
+    });
+    
+    // Add metadata matches
+    metadataMatches.forEach((profile) => {
+      if (!profileMap.has(profile.id)) {
+        profileMap.set(profile.id, profile);
+      }
+    });
 
-    return NextResponse.json({ users: results });
+    const profiles = Array.from(profileMap.values()).slice(0, 20);
+
+    // Format results
+    const users = (profiles || []).map((profile) => {
+      const metadata = profile.metadata as { name?: string; [key: string]: unknown } | null;
+      // Return the actual name from metadata, not the formatted username
+      const actualName = metadata?.name || null;
+      
+      return {
+        id: profile.id,
+        name: actualName,
+        username: profile.username || null,
+        profilePictureUrl: profile.profile_picture_url || null,
+      };
+    });
+
+    return NextResponse.json({
+      success: true,
+      users,
+    });
   } catch (error) {
-    console.error("Error searching users:", error);
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+    console.error("Error in GET /api/users/search:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
   }
 }

@@ -4,6 +4,7 @@ import { LogoutButton } from "@/components/logout-button";
 import { UsernameSection } from "@/components/username-section";
 import { DeleteUserButton } from "@/components/delete-user-button";
 import { ProfilePictureUpload } from "@/components/profile-picture-upload";
+import { StreakLeaderboardButton } from "@/components/streak-leaderboard-button";
 import { formatUsername } from "@/lib/utils";
 import Link from "next/link";
 
@@ -52,22 +53,37 @@ export default async function UserProfilePage() {
 
   return (
     <div className="px-4 py-6 pb-24">
-      <header className="flex justify-between items-start border-b border-[hsl(var(--border))] pb-5 mb-7">
-        <div className="flex-1">
+      <header className="flex justify-between items-start gap-4 border-b border-[hsl(var(--border))] pb-5 mb-7">
+        <div className="flex-1 min-w-0">
           <div className="flex items-start gap-4 mb-4">
             <ProfilePictureUpload
               currentPictureUrl={profile?.profile_picture_url || null}
               userId={user.id}
             />
-            <div className="flex-1">
-              <h1 className="text-3xl font-bold text-foreground tracking-tight mb-2">{displayName || "Profile"}</h1>
-              <div className="text-sm text-[hsl(var(--muted-foreground))]">
-                <UsernameSection currentUsername={profile?.username || null} />
+            <div className="flex-1 min-w-0 pr-2 overflow-hidden">
+              <h1 
+                className={`font-bold text-foreground tracking-tight mb-2 truncate ${
+                  displayName.length > 12 
+                    ? "text-base" 
+                    : displayName.length > 8 
+                    ? "text-lg" 
+                    : displayName.length > 5
+                    ? "text-xl"
+                    : "text-2xl"
+                }`}
+                title={displayName.length > 12 ? displayName : undefined}
+              >
+                {displayName.length > 12 ? `${displayName.substring(0, 12)}...` : displayName || "Profile"}
+              </h1>
+              <div className="text-sm text-[hsl(var(--muted-foreground))] truncate">
+                {metadata?.name || user.user_metadata?.full_name || (profile?.username ? `@${profile.username}` : "")}
               </div>
             </div>
           </div>
         </div>
-        <LogoutButton />
+        <div className="flex-shrink-0">
+          <LogoutButton />
+        </div>
       </header>
 
       {/* User Rating Section - Top */}
@@ -100,7 +116,10 @@ export default async function UserProfilePage() {
       {/* Daily Streak and Quiz Rush - Horizontal */}
       <section className="mb-5">
         <div className="grid grid-cols-2 gap-4">
-          <div className="p-6 border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))]">
+          <div className="p-6 border-2 border-[hsl(var(--border))] bg-[hsl(var(--card))] relative">
+            <div className="absolute top-3 right-3">
+              <StreakLeaderboardButton />
+            </div>
             <h3 className="text-xs font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-3">Daily Streak</h3>
             <p className="text-4xl font-bold text-foreground tracking-tight">
               <span className="text-3xl">🔥</span> {currentStreak}
@@ -155,7 +174,7 @@ export default async function UserProfilePage() {
             href={`/protected/profile/posts/${user.id}`}
             className="block p-6 border-2 border-[hsl(var(--border))] hover:border-[hsl(var(--primary))] transition-all duration-200 bg-[hsl(var(--card))] group"
           >
-            <h2 className="text-sm font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-3 min-h-[3rem] group-hover:text-foreground transition-colors">My Posts</h2>
+            <h2 className="text-sm font-semibold text-[hsl(var(--muted-foreground))] uppercase tracking-wider mb-3 min-h-[3rem] group-hover:text-foreground transition-colors">Posts</h2>
             <p className="text-4xl font-bold text-foreground tracking-tight">{postsCount || 0}</p>
           </Link>
         </div>

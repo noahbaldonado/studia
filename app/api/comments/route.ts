@@ -81,11 +81,11 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Fetch user profiles for author names
+    // Fetch user profiles for author names and profile pictures
     const userIds = [...new Set(comments?.map((c) => c.user_id) || [])];
     const { data: profiles } = await supabase
       .from("profile")
-      .select("id, metadata, username")
+      .select("id, metadata, username, profile_picture_url")
       .in("id", userIds);
 
     const profileMap = new Map(
@@ -108,6 +108,7 @@ export async function GET(request: NextRequest) {
           {
             ...c,
             authorName,
+            authorProfilePictureUrl: profile?.profile_picture_url || null,
             netLikes:
               (commentLikes[c.id]?.likes || 0) -
               (commentLikes[c.id]?.dislikes || 0),

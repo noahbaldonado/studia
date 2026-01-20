@@ -2,14 +2,16 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { UserPlus, UserMinus, ArrowLeft } from "lucide-react";
+import { UserPlus, UserMinus, ArrowLeft, User } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 
 interface SuggestedUser {
   id: string;
   name: string;
-  email: string | null;
+  username: string | null;
+  profilePictureUrl: string | null;
   mutualCourses: number;
 }
 
@@ -147,23 +149,34 @@ export default function AllSuggestedFriendsPage() {
           <div className="space-y-2 mb-6">
             {paginatedFriends.map((user) => {
               const isFollowing = followingMap.has(user.id);
-              const emailDisplay = user.email
-                ? user.email.replace("@ucsc.edu", "")
-                : "";
 
               return (
                 <div
                   key={user.id}
-                  className="flex items-center justify-between p-3 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors bg-white"
+                  className="flex items-center gap-3 p-3 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors bg-white"
                 >
+                  {/* Profile Picture */}
+                  <div className="relative w-10 h-10 rounded-full overflow-hidden flex-shrink-0 bg-blue-100">
+                    {user.profilePictureUrl ? (
+                      <Image
+                        src={user.profilePictureUrl}
+                        alt={user.name}
+                        fill
+                        className="object-cover"
+                        sizes="40px"
+                      />
+                    ) : (
+                      <User className="w-6 h-6 h-full w-full p-2 text-blue-600" />
+                    )}
+                  </div>
                   <button
                     onClick={() => handleSelectUser(user)}
-                    className="flex-1 text-left"
+                    className="flex-1 text-left min-w-0"
                   >
-                    <div className="font-medium text-blue-900">{user.name}</div>
-                    {emailDisplay && (
-                      <div className="text-xs text-blue-600 mt-0.5">
-                        {emailDisplay}@ucsc.edu
+                    <div className="font-medium text-blue-900 truncate">{user.name}</div>
+                    {user.username && (
+                      <div className="text-xs text-blue-600 mt-0.5 truncate">
+                        @{user.username}
                       </div>
                     )}
                     <div className="text-xs text-blue-500 mt-1">
@@ -172,7 +185,7 @@ export default function AllSuggestedFriendsPage() {
                   </button>
                   <button
                     onClick={() => handleFollow(user.id)}
-                    className="ml-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors text-sm font-medium text-blue-700"
+                    className="ml-4 flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-blue-200 hover:bg-blue-50 transition-colors text-sm font-medium text-blue-700 flex-shrink-0"
                   >
                     {isFollowing ? (
                       <>

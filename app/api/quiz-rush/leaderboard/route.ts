@@ -45,7 +45,7 @@ export async function GET(request: NextRequest) {
       // Get profiles of friends (including current user) with quiz rush scores
       const { data: profiles, error: profileError } = await supabase
         .from("profile")
-        .select("id, metadata, username")
+        .select("id, metadata, username, profile_picture_url")
         .in("id", userIdsToFetch);
 
       if (profileError) {
@@ -65,6 +65,7 @@ export async function GET(request: NextRequest) {
             id: profile.id,
             name: displayName,
             score: score,
+            profilePictureUrl: profile.profile_picture_url || null,
           };
         })
         .filter((entry) => entry.score > 0) // Only include users with scores
@@ -79,7 +80,7 @@ export async function GET(request: NextRequest) {
       // Global leaderboard - get all profiles with quiz rush scores
       const { data: profiles, error: profileError } = await supabase
         .from("profile")
-        .select("id, metadata, username");
+        .select("id, metadata, username, profile_picture_url");
 
       if (profileError) {
         console.error("Error fetching profiles:", profileError);
@@ -98,6 +99,7 @@ export async function GET(request: NextRequest) {
             id: profile.id,
             name: displayName,
             score: score,
+            profilePictureUrl: profile.profile_picture_url || null,
           };
         })
         .filter((entry) => entry.score > 0) // Only include users with scores

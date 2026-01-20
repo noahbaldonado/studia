@@ -82,7 +82,7 @@ export async function GET(request: NextRequest) {
     // Get profile info for these users
     const { data: profiles, error: profileError } = await supabase
       .from("profile")
-      .select("id, metadata, username")
+      .select("id, metadata, username, profile_picture_url")
       .in("id", userIds);
 
     if (profileError) {
@@ -100,14 +100,15 @@ export async function GET(request: NextRequest) {
       .map(({ userId, mutualCount }) => {
         const profile = profileMap.get(userId);
         if (!profile) return null;
-        const metadata = profile.metadata as { name?: string; email?: string; [key: string]: unknown };
+        const metadata = profile.metadata as { name?: string; [key: string]: unknown };
         const displayName = profile.username
           ? formatUsername(profile.username)
           : metadata?.name || `User ${userId.substring(0, 8)}`;
         return {
           id: userId,
           name: displayName,
-          email: metadata?.email || null,
+          username: profile.username || null,
+          profilePictureUrl: profile.profile_picture_url || null,
           mutualCourses: mutualCount,
         };
       })

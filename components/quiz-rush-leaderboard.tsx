@@ -1,14 +1,17 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Trophy } from "lucide-react";
+import { Trophy, User } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import Image from "next/image";
 
 interface LeaderboardEntry {
   id: string;
   name: string;
   score: number;
   rank: number;
+  profilePictureUrl?: string | null;
 }
 
 interface QuizRushLeaderboardProps {
@@ -100,8 +103,27 @@ export function QuizRushLeaderboard({ isOpen, onClose }: QuizRushLeaderboardProp
                     <div className="w-8 h-8 bg-[hsl(var(--secondary))] flex items-center justify-center font-bold text-xs text-foreground">
                       {entry.rank}
                     </div>
+                    {/* Profile picture */}
+                    <div className="relative w-8 h-8 rounded-full overflow-hidden flex-shrink-0 bg-[hsl(var(--muted))]">
+                      {entry.profilePictureUrl ? (
+                        <Image
+                          src={entry.profilePictureUrl}
+                          alt={entry.name}
+                          fill
+                          className="object-cover"
+                          sizes="32px"
+                        />
+                      ) : (
+                        <User className="w-5 h-5 h-full w-full p-1.5 text-[hsl(var(--muted-foreground))]" />
+                      )}
+                    </div>
                     <div>
-                      <div className="font-semibold text-foreground text-sm">{entry.name}</div>
+                      <Link
+                        href={`/protected/profile/${entry.id}`}
+                        className="font-semibold text-foreground text-sm hover:text-[hsl(var(--primary))] hover:underline"
+                      >
+                        {entry.name}
+                      </Link>
                     </div>
                   </div>
                   <div className="font-bold text-[hsl(var(--primary))] text-sm">{entry.score} pts</div>
