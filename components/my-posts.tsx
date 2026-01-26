@@ -75,12 +75,6 @@ export function MyPosts({ userId }: MyPostsProps) {
           const likesB = b.likes || 0;
           return likesB - likesA; // Highest likes first
         });
-      } else if (sortMode === "net_likes") {
-        sortedPosts = sortedPosts.sort((a, b) => {
-          const netLikesA = (a.likes || 0) - (a.dislikes || 0);
-          const netLikesB = (b.likes || 0) - (b.dislikes || 0);
-          return netLikesB - netLikesA; // Highest net likes first
-        });
       } else if (sortMode === "chronological") {
         sortedPosts = sortedPosts.sort((a, b) => {
           const dateA = new Date(a.created_at).getTime();
