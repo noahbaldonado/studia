@@ -9,8 +9,18 @@ const defaultUrl = process.env.VERCEL_URL
 
 export const metadata: Metadata = {
   metadataBase: new URL(defaultUrl),
-  title: "Next.js and Supabase Starter Kit",
-  description: "The fastest way to build apps with Next.js and Supabase",
+  title: "Studia",
+  description: "A study social media platform",
+  openGraph: {
+    title: "Studia",
+    description: "A study social media platform",
+    type: "website",
+  },
+  twitter: {
+    card: "summary",
+    title: "Studia",
+    description: "A study social media platform",
+  },
 };
 
 const inter = Inter({
