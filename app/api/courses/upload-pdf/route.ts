@@ -1,6 +1,7 @@
 import { createClient } from "@/lib/supabase/server";
 import { NextRequest, NextResponse } from "next/server";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { createHash } from "crypto";
 
 interface QuizItem {
   type: "quiz";
@@ -141,93 +142,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate unique file path
-    const timestamp = Date.now();
-    const sanitizedName = file.name.replace(/[^a-zA-Z0-9.-]/g, "_");
-    const filePath = `${courseId}/${timestamp}_${sanitizedName}`;
-    console.log("[upload-pdf] File path:", filePath);
-
-    // Upload to Supabase Storage using the buffer (convert back to Blob)
-    console.log("[upload-pdf] Uploading to Supabase Storage");
-    const fileBlob = new Blob([fileBuffer], { type: "application/pdf" });
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from("course-pdfs")
-      .upload(filePath, fileBlob, {
-        contentType: "application/pdf",
-        upsert: false,
-      });
-
-    if (uploadError) {
-      console.error("[upload-pdf] Storage upload error:", uploadError);
-      console.error("[upload-pdf] Storage error details:", {
-        message: uploadError.message,
-        statusCode: (uploadError as any).statusCode,
-        status: (uploadError as any).status,
-        name: (uploadError as any).name,
-      });
-      
-      // Check for specific error types
-      const errorMessage = uploadError.message || "";
-      const statusCode = (uploadError as any).statusCode;
-      
-      // Check if bucket doesn't exist
-      const isBucketNotFound = 
-        errorMessage.includes("Bucket not found") || 
-        errorMessage.includes("The resource was not found") ||
-        statusCode === 404 ||
-        statusCode === "404";
-      
-      if (isBucketNotFound) {
-        return NextResponse.json(
-          { error: "The 'course-pdfs' bucket does not exist. Create the bucket in Supabase Storage. Go to Supabase Dashboard → Storage → Create bucket → Name it 'course-pdfs' → Set it to public." },
-          { status: 500 }
-        );
-      }
-      
-      // Check if RLS policy violation
-      const isRLSViolation = 
-        errorMessage.includes("row-level security policy") ||
-        errorMessage.includes("RLS policy") ||
-        statusCode === 403 ||
-        statusCode === "403";
-      
-      if (isRLSViolation) {
-        return NextResponse.json(
-          { error: "Storage bucket RLS policies are not configured. Run the SQL migration '12_create_storage_bucket_policies.sql' in your Supabase SQL Editor to set up the required storage policies." },
-          { status: 500 }
-        );
-      }
-      
-      return NextResponse.json(
-        { error: `Error uploading file: ${uploadError.message || "Unknown error"}` },
-        { status: 500 }
-      );
-    }
-    console.log("[upload-pdf] File uploaded successfully to storage");
-
-    // Save metadata to database
-    console.log("[upload-pdf] Saving metadata to database");
-    const { data: dbData, error: dbError } = await supabase
-      .from("course_pdfs")
-      .insert({
-        course_id: courseId,
-        name: file.name,
-        file_path: filePath,
-        user_id: user.id,
-      })
-      .select()
-      .single();
-
-    if (dbError) {
-      console.error("[upload-pdf] Database insert error:", dbError);
-      // If database insert fails, try to remove the uploaded file
-      await supabase.storage.from("course-pdfs").remove([filePath]);
-      return NextResponse.json(
-        { error: "Error saving metadata" },
-        { status: 500 }
-      );
-    }
-    console.log("[upload-pdf] Metadata saved successfully, PDF ID:", dbData.id);
+    // Calculate hash from PDF buffer for tagging
+    const pdfHash = createHash("sha256").update(fileBuffer).digest("hex");
+    console.log("[upload-pdf] PDF hash calculated:", pdfHash.substring(0, 8) + "...");
 
     // Parse PDF to get page count for dynamic content generation
     let pdfPageCount = 1;
@@ -428,16 +345,12 @@ Generate the content now:`;
             generatedContent = [];
           }
 
-            // Get PDF UUID to add to tags
-            const pdfId = dbData.id;
-            console.log("[upload-pdf] PDF ID for tags:", pdfId);
-
             // Validate structure and filter valid items
             console.log("[upload-pdf] Validating generated content");
             if (Array.isArray(generatedContent)) {
               const validContent: GeneratedContent[] = [];
               
-            // Validate each item and add PDF ID to tags
+            // Validate each item
             for (const item of generatedContent) {
               if (item.type === "quiz") {
                 const quiz = item as QuizItem;
@@ -479,12 +392,9 @@ Generate the content now:`;
                 continue;
               }
               
-              // Add PDF ID to suggested_topic_tags if not already present
+              // Ensure suggested_topic_tags exists
               if (!item.suggested_topic_tags) {
                 item.suggested_topic_tags = [];
-              }
-              if (!item.suggested_topic_tags.includes(pdfId)) {
-                item.suggested_topic_tags.push(pdfId);
               }
               
               // If it passed validation, add it
@@ -498,10 +408,13 @@ Generate the content now:`;
               // Extract tags before saving (they'll be stored separately)
               const tags = item.suggested_topic_tags || [];
               
+              // Add PDF hash as a tag
+              tags.push(`pdf:${pdfHash}`);
+              
               // Create a copy of the item without tags for the data column
               const { suggested_topic_tags, ...itemWithoutTags } = item;
               
-              // Insert quiz into database with pdf_id to track PDF source
+              // Insert quiz into database with generated_from_pdf flag
               // likes and dislikes default to 0, created_at is set automatically
               const { data: insertedQuiz, error: quizInsertError } = await supabase
                 .from("quiz")
@@ -511,7 +424,7 @@ Generate the content now:`;
                   dislikes: 0,
                   course_id: courseId,
                   user_id: user.id,
-                  pdf_id: pdfId, // Track that this quiz was generated from a PDF
+                  generated_from_pdf: true, // Track that this quiz was generated from a PDF
                 })
                 .select("id")
                 .single();
@@ -527,9 +440,9 @@ Generate the content now:`;
                 for (const tagName of tags) {
                   if (!tagName || typeof tagName !== 'string') continue;
                   
-                  // Prefix tag with course name (skip if it's already a UUID from PDF ID)
-                  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(tagName);
-                  const prefixedTagName = isUuid ? tagName : `${courseName}: ${tagName}`;
+                  // Prefix tag with course name (skip if it's a PDF hash tag)
+                  const isPdfHash = tagName.startsWith("pdf:");
+                  const prefixedTagName = isPdfHash ? tagName : `${courseName}: ${tagName}`;
                   
                   // Get or create tag
                   let tagData: { id: number } | null = null;
@@ -626,7 +539,6 @@ Generate the content now:`;
     return NextResponse.json(
       { 
         success: true, 
-        data: dbData,
         generated_content_count: generatedContent.length,
       },
       { status: 200 }

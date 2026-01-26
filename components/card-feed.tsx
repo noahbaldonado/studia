@@ -1,13 +1,11 @@
 "use client";
 
-"use client";
-
 import { useState, useEffect, useCallback, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import Image from "next/image";
-import { CheckCircle2, ThumbsUp, ThumbsDown, Bot, User } from "lucide-react";
+import { CheckCircle2, ThumbsUp, ThumbsDown, Bot, User, X, Check } from "lucide-react";
 import { QuizComments } from "./quiz-comments";
 import { formatUsername } from "@/lib/utils";
 import { SortMode } from "@/components/feed-sort-filter-controls";
@@ -57,7 +55,22 @@ interface PollData {
   suggested_topic_tags?: string[];
 }
 
-type CardData = QuizData | StickyNoteData | FlashcardData | OpenQuestionData | PollData;
+interface SyllabusReplacementData {
+  type: "syllabus_replacement";
+  content: {
+    course_name: string;
+    new_syllabus_url: string;
+    status: "pending" | "approved" | "rejected";
+    approval_count: number;
+    rejection_count: number;
+    approval_threshold?: number;
+    rejection_threshold?: number;
+    change_summary?: string | null;
+  };
+  suggested_topic_tags?: string[];
+}
+
+type CardData = QuizData | StickyNoteData | FlashcardData | OpenQuestionData | PollData | SyllabusReplacementData;
 
 interface Quiz {
   id: string;
@@ -74,10 +87,8 @@ interface Quiz {
   user_id?: string | null; // Author user ID
   author_username?: string | null;
   author_profile_picture_url?: string | null;
-  pdf_id?: string | null;
-  pdf_owner_id?: string | null; // PDF owner user ID
-  pdf_owner_username?: string | null;
-  pdf_owner_profile_picture_url?: string | null;
+  generated_from_pdf?: boolean | null;
+  is_syllabus_replacement?: boolean; // true if this is a syllabus replacement proposal
 }
 
 interface CardFeedProps {
@@ -94,6 +105,7 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
   // Poll state: stores vote counts and user vote per poll
   const [pollVotes, setPollVotes] = useState<Record<string, { voteCounts: number[]; totalVotes: number; userVote: number | null; showingResults: boolean }>>({});
   const [updatingPolls, setUpdatingPolls] = useState<Set<string>>(new Set());
+  const [currentUser, setCurrentUser] = useState<{ id: string } | null>(null);
   
   // View time tracking
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -115,6 +127,8 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
         setIsLoading(false);
         return;
       }
+
+      setCurrentUser(user);
 
       // Clear existing cards before loading new ones
       setCards([]);
@@ -138,6 +152,9 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
         setIsLoading(false);
         return;
       }
+      
+      // Store regular cards separately to merge with syllabus replacements later
+      let regularCards: Quiz[] = [];
       
       // Call RPC function to get scored quizzes filtered by subscriptions (only if using algorithm sort)
       let data: any[] | null = null;
@@ -203,7 +220,7 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
             dislikes,
             created_at,
             user_id,
-            pdf_id,
+            generated_from_pdf,
             course:course_id (
               name
             ),
@@ -227,9 +244,8 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
           }
 
           if (fallbackData) {
-            // Get user IDs, PDF IDs, and course IDs for lookup
+            // Get user IDs and course IDs for lookup
             const userIds = [...new Set(fallbackData.map((q: any) => q.user_id))];
-            const pdfIds = [...new Set(fallbackData.map((q: any) => q.pdf_id).filter(Boolean))];
             const courseIds = [...new Set(fallbackData.map((q: any) => q.course_id))];
             
             // Get profiles for authors
@@ -245,34 +261,6 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
               .in("id", courseIds);
             
             const courseMap = new Map((courses || []).map((c: any) => [c.id, c.name]));
-            
-            // Get PDFs and their owners
-            let pdfOwners: Record<string, { owner_id: string; username: string | null; profile_picture_url: string | null }> = {};
-            if (pdfIds.length > 0) {
-              const { data: pdfs } = await supabase
-                .from("course_pdfs")
-                .select("id, user_id")
-                .in("id", pdfIds);
-              
-              if (pdfs) {
-                const pdfOwnerIds = [...new Set(pdfs.map((p: any) => p.user_id))];
-                const { data: pdfOwnerProfiles } = await supabase
-                  .from("profile")
-                  .select("id, username, profile_picture_url")
-                  .in("id", pdfOwnerIds);
-                
-                if (pdfOwnerProfiles) {
-                  const pdfOwnerMap = new Map(pdfOwnerProfiles.map((p: any) => [p.id, { username: p.username, profile_picture_url: p.profile_picture_url }]));
-                  pdfs.forEach((pdf: any) => {
-                    pdfOwners[pdf.id] = {
-                      owner_id: pdf.user_id,
-                      username: pdfOwnerMap.get(pdf.user_id)?.username || null,
-                      profile_picture_url: pdfOwnerMap.get(pdf.user_id)?.profile_picture_url || null,
-                    };
-                  });
-                }
-              }
-            }
             
             const authorMap = new Map((authorProfiles || []).map((p: any) => [p.id, { username: p.username, profile_picture_url: p.profile_picture_url }]));
             
@@ -316,6 +304,7 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
               }
               
               const userInteraction = interactionMap.get(quiz.id);
+              const isSyllabusReplacement = cardData.type === "syllabus_replacement";
               
               return {
                 id: quiz.id,
@@ -332,13 +321,12 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
                 user_id: quiz.user_id || null,
                 author_username: authorMap.get(quiz.user_id)?.username || null,
                 author_profile_picture_url: authorMap.get(quiz.user_id)?.profile_picture_url || null,
-                pdf_id: quiz.pdf_id || null,
-                pdf_owner_id: quiz.pdf_id && pdfOwners[quiz.pdf_id] ? pdfOwners[quiz.pdf_id].owner_id : null,
-                pdf_owner_username: quiz.pdf_id && pdfOwners[quiz.pdf_id] ? pdfOwners[quiz.pdf_id].username : null,
-                pdf_owner_profile_picture_url: quiz.pdf_id && pdfOwners[quiz.pdf_id] ? pdfOwners[quiz.pdf_id].profile_picture_url : null,
+                generated_from_pdf: quiz.generated_from_pdf || false,
+                is_syllabus_replacement: isSyllabusReplacement,
               } as Quiz;
             });
             
+            regularCards = cardsWithTags;
             setCards(cardsWithTags);
 
             // Fetch poll votes for fallback data (similar to RPC path)
@@ -418,10 +406,7 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
           user_id: string;
           author_username?: string | null;
           author_profile_picture_url?: string | null;
-          pdf_id?: string | null;
-          pdf_owner_id?: string | null;
-          pdf_owner_username?: string | null;
-          pdf_owner_profile_picture_url?: string | null;
+          generated_from_pdf?: boolean | null;
         }
         
         // Get course names for RPC data (if not already included in response)
@@ -444,6 +429,8 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
             cardData.suggested_topic_tags = tags;
           }
           
+          const isSyllabusReplacement = cardData.type === "syllabus_replacement";
+          
           return {
             id: quiz.id,
             data: cardData,
@@ -460,10 +447,8 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
             user_id: quiz.user_id || null,
             author_username: quiz.author_username || null,
             author_profile_picture_url: quiz.author_profile_picture_url || null,
-            pdf_id: quiz.pdf_id || null,
-            pdf_owner_id: quiz.pdf_owner_id || null,
-            pdf_owner_username: quiz.pdf_owner_username || null,
-            pdf_owner_profile_picture_url: quiz.pdf_owner_profile_picture_url || null,
+            generated_from_pdf: quiz.generated_from_pdf || false,
+            is_syllabus_replacement: isSyllabusReplacement,
           } as Quiz;
         });
 
@@ -483,6 +468,7 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
           });
         }
         
+        regularCards = cardsWithTags;
         setCards(cardsWithTags);
 
         // Fetch poll votes for all polls
@@ -538,6 +524,40 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
         // No data returned (user might have no subscriptions or no quizzes)
         setCards([]);
       }
+
+      // Syllabus replacements are now stored in the quiz table, so they're already included in regularCards
+      // Just need to sort: pending syllabus replacements first
+      const syllabusReplacements = regularCards.filter((c) => {
+        const data = c.data as any;
+        return data?.type === "syllabus_replacement";
+      });
+      console.log(`[CardFeed] Found ${syllabusReplacements.length} syllabus replacement cards out of ${regularCards.length} total cards`);
+      
+      if (regularCards.length > 0) {
+        regularCards.sort((a, b) => {
+          const aData = a.data as any;
+          const bData = b.data as any;
+          const aIsPending = aData?.type === "syllabus_replacement" && aData?.content?.status === "pending";
+          const bIsPending = bData?.type === "syllabus_replacement" && bData?.content?.status === "pending";
+          
+          if (aIsPending && !bIsPending) return -1;
+          if (!aIsPending && bIsPending) return 1;
+          if (aIsPending && bIsPending) {
+            // Both pending: sort by created_at desc (newest first)
+            return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+          }
+          
+          // Neither pending: use existing sorting logic
+          if (sortMode === "algorithm" && a.final_score !== undefined && b.final_score !== undefined) {
+            return b.final_score - a.final_score;
+          }
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+
+        setCards(regularCards);
+      } else {
+        setCards([]);
+      }
     } catch (error) {
       console.error("Error loading cards:", error);
     } finally {
@@ -549,8 +569,26 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
     loadCards();
   }, [loadCards]);
 
+  // Listen for feed refresh events (e.g., after syllabus upload)
+  useEffect(() => {
+    const handleRefresh = () => {
+      loadCards();
+    };
+    
+    window.addEventListener('refreshFeed', handleRefresh);
+    return () => {
+      window.removeEventListener('refreshFeed', handleRefresh);
+    };
+  }, [loadCards]);
+
   // Increment user's interaction score for a post (with capping at 10)
   const incrementUserInteractionScore = useCallback(async (quizId: string, increment: number) => {
+    // Don't track interactions for syllabus replacements (they use a different voting system)
+    const card = cards.find((c) => c.id === quizId);
+    if (card?.is_syllabus_replacement) {
+      return;
+    }
+    
     try {
       await fetch("/api/quiz/update-user-interaction-score", {
         method: "POST",
@@ -565,7 +603,7 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
     } catch (error) {
       console.error("Error incrementing user interaction score:", error);
     }
-  }, []);
+  }, [cards]);
 
   // Set user's interaction score to a specific value (capped at 10)
   const setUserInteractionScore = useCallback(async (quizId: string, score: number) => {
@@ -587,6 +625,12 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
 
   // Mark a card as interacted (view-time-based)
   const markCardAsInteracted = useCallback(async (quizId: string) => {
+    // Don't track interactions for syllabus replacements (they use a different voting system)
+    const card = cards.find((c) => c.id === quizId);
+    if (card?.is_syllabus_replacement) {
+      return;
+    }
+    
     // Don't mark if already interacted
     if (interactedCardIds.current.has(quizId)) {
       return;
@@ -607,7 +651,7 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
     } catch (error) {
       console.error("Error marking card as interacted:", error);
     }
-  }, []);
+  }, [cards]);
 
   // Handle toggling off interaction (removing like/dislike)
   const handleInteractionToggle = useCallback(async (quizId: string) => {
@@ -953,8 +997,8 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
 
   // Get author display text
   const getAuthorText = useCallback((card: Quiz): string => {
-    if (card.pdf_id && card.pdf_owner_username) {
-      return `Created from ${formatUsername(card.pdf_owner_username)}'s notes`;
+    if (card.generated_from_pdf && card.author_username) {
+      return `Created from ${formatUsername(card.author_username)}'s notes`;
     }
     if (card.author_username) {
       return `Created by ${formatUsername(card.author_username)}`;
@@ -1154,7 +1198,7 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
             className={getCardStyle()}
           >
             {/* Author Section */}
-            <div className={`px-4 pt-2.5 pb-2 border-b ${
+            <div             className={`px-4 pt-2.5 pb-2 border-b ${
               cardData.type === "quiz"
                 ? "border-[hsl(200,100%,50%)]"
                 : cardData.type === "poll"
@@ -1163,23 +1207,25 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
                 ? "border-[hsl(120,100%,50%)]"
                 : cardData.type === "sticky_note"
                 ? "border-[hsl(60,100%,50%)]"
+                : cardData.type === "syllabus_replacement"
+                ? "border-[hsl(280,100%,50%)]"
                 : "border-[hsl(var(--border))]"
             }`}>
               <div className="flex items-center justify-between mb-1.5">
                 <div className="flex items-center gap-2">
                   <div className="relative w-5 h-5 flex-shrink-0">
-                    {(card.author_profile_picture_url || card.pdf_owner_profile_picture_url) ? (
+                    {card.author_profile_picture_url ? (
                       <>
                         <div className="relative w-5 h-5 rounded-full overflow-hidden border border-[hsl(var(--border))]">
                           <Image
-                            src={card.pdf_owner_profile_picture_url || card.author_profile_picture_url || ""}
+                            src={card.author_profile_picture_url || ""}
                             alt="Profile"
                             fill
                             className="object-cover"
                             unoptimized
                           />
                         </div>
-                        {card.pdf_id && (
+                        {card.generated_from_pdf && (
                           <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[hsl(var(--background))] border border-[hsl(var(--border))] flex items-center justify-center">
                             <Bot className="w-2 h-2 text-[hsl(var(--primary))]" />
                           </div>
@@ -1188,7 +1234,7 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
                     ) : (
                       <div className="relative w-5 h-5 rounded-full overflow-hidden border border-[hsl(var(--border))] bg-[hsl(var(--muted))] flex items-center justify-center">
                         <User className="w-3 h-3 text-[hsl(var(--muted-foreground))]" />
-                        {card.pdf_id && (
+                        {card.generated_from_pdf && (
                           <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-[hsl(var(--background))] border border-[hsl(var(--border))] flex items-center justify-center">
                             <Bot className="w-2 h-2 text-[hsl(var(--primary))]" />
                           </div>
@@ -1197,14 +1243,14 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
                     )}
                   </div>
                   <div className="text-xs font-medium text-[hsl(var(--muted-foreground))]">
-                    {card.pdf_id && card.pdf_owner_username ? (
+                    {card.generated_from_pdf && card.author_username ? (
                       <>
                         Created from{" "}
                         <Link 
-                          href={`/protected/profile/${card.pdf_owner_id}`}
+                          href={`/protected/profile/${card.user_id}`}
                           className="hover:opacity-80 transition-opacity underline"
                         >
-                          {formatUsername(card.pdf_owner_username)}
+                          {formatUsername(card.author_username)}
                         </Link>
                         's notes
                       </>
@@ -1239,6 +1285,8 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
                       ? "text-[hsl(120,100%,50%)]"
                       : cardData.type === "sticky_note"
                       ? "text-[hsl(60,100%,50%)]"
+                      : cardData.type === "syllabus_replacement"
+                      ? "text-[hsl(280,100%,50%)]"
                       : "text-[hsl(var(--primary))]"
                   }`}
                 >
@@ -1448,9 +1496,175 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
                     );
                   })()}
                 </div>
+              ) : cardData.type === "syllabus_replacement" ? (
+                <div>
+                  <div className="mb-3">
+                    <p className="text-sm font-semibold text-foreground mb-2">
+                      {cardData.content.status === "pending" 
+                        ? "Syllabus Replacement Proposal" 
+                        : cardData.content.status === "approved"
+                        ? "Syllabus Replacement - Approved"
+                        : "Syllabus Replacement - Rejected"}
+                    </p>
+                    <a
+                      href={cardData.content.new_syllabus_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-sm text-[hsl(var(--primary))] hover:underline mb-2 inline-block"
+                    >
+                      View Proposed Syllabus
+                    </a>
+                    {cardData.content.status === "pending" && (
+                      <div className="mt-2 text-xs text-[hsl(var(--muted-foreground))]">
+                        <p>
+                          Approvals: {card.likes}/{cardData.content.approval_threshold ?? 1} / 
+                          Rejections: {card.dislikes}/{cardData.content.rejection_threshold ?? 1}
+                        </p>
+                      </div>
+                    )}
+                    {cardData.content.status === "approved" && cardData.content.change_summary && (
+                      <div className="mt-2 p-2 bg-[hsl(var(--secondary))] border border-[hsl(var(--border))] rounded">
+                        <p className="text-xs font-semibold text-foreground mb-1">Change Summary:</p>
+                        <p className="text-xs text-[hsl(var(--muted-foreground))]">
+                          {cardData.content.change_summary}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  {cardData.content.status === "pending" && card.is_syllabus_replacement && currentUser && card.user_id !== currentUser.id && (
+                    <div className="flex gap-2">
+                      <button
+                        onClick={async () => {
+                          try {
+                            const response = await fetch(
+                              `/api/courses/${card.course_id}/syllabus-replacement/${card.id}/vote`,
+                              {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ voteType: "approve" }),
+                              }
+                            );
+                            if (response.ok) {
+                              const result = await response.json();
+                              console.log("[CardFeed] Approve vote response:", result);
+                              console.log("[CardFeed] Current card state before update:", { id: card.id, is_like: card.is_like, likes: card.likes, dislikes: card.dislikes });
+                              // Update with server response
+                              setCards((prevCards) =>
+                                prevCards.map((c) => {
+                                  if (c.id === card.id && c.is_syllabus_replacement) {
+                                    const syllabusData = c.data as SyllabusReplacementData;
+                                    const newStatus = result.status || syllabusData.content.status;
+                                    const updatedCard = {
+                                      ...c,
+                                      is_like: true,
+                                      likes: result.approvalCount ?? c.likes ?? 0,
+                                      dislikes: result.rejectionCount ?? c.dislikes ?? 0,
+                                      data: {
+                                        ...syllabusData,
+                                        content: {
+                                          ...syllabusData.content,
+                                          status: newStatus,
+                                          change_summary: newStatus === "approved" ? (result.change_summary || syllabusData.content.change_summary) : null,
+                                        },
+                                      },
+                                    } as Quiz;
+                                    console.log("[CardFeed] Updated card state:", { id: updatedCard.id, is_like: updatedCard.is_like, likes: updatedCard.likes, dislikes: updatedCard.dislikes });
+                                    return updatedCard;
+                                  }
+                                  return c;
+                                })
+                              );
+                              // Don't reload - the card update is already in place
+                              // The card will remain visible with its new status
+                            } else {
+                              const error = await response.json();
+                              console.error("[CardFeed] Approve vote error:", error);
+                              await loadCards();
+                            }
+                          } catch (error) {
+                            console.error("Error voting:", error);
+                            await loadCards();
+                          }
+                        }}
+                        disabled={card.is_like === true}
+                        className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                          card.is_like === true
+                            ? "bg-green-500/20 text-green-500"
+                            : "border border-[hsl(var(--border))] hover:bg-[hsl(var(--secondary))] text-foreground"
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      >
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span>Approve</span>
+                      </button>
+                      <button
+                        onClick={async () => {
+                          try {
+                            const response = await fetch(
+                              `/api/courses/${card.course_id}/syllabus-replacement/${card.id}/vote`,
+                              {
+                                method: "POST",
+                                headers: { "Content-Type": "application/json" },
+                                body: JSON.stringify({ voteType: "reject" }),
+                              }
+                            );
+                            if (response.ok) {
+                              const result = await response.json();
+                              console.log("[CardFeed] Reject vote response:", result);
+                              console.log("[CardFeed] Current card state before update:", { id: card.id, is_like: card.is_like, likes: card.likes, dislikes: card.dislikes });
+                              // Update with server response
+                              setCards((prevCards) =>
+                                prevCards.map((c) => {
+                                  if (c.id === card.id && c.is_syllabus_replacement) {
+                                    const syllabusData = c.data as SyllabusReplacementData;
+                                    const newStatus = result.status || syllabusData.content.status;
+                                    const updatedCard = {
+                                      ...c,
+                                      is_like: false,
+                                      likes: result.approvalCount ?? c.likes ?? 0,
+                                      dislikes: result.rejectionCount ?? c.dislikes ?? 0,
+                                      data: {
+                                        ...syllabusData,
+                                        content: {
+                                          ...syllabusData.content,
+                                          status: newStatus,
+                                        },
+                                      },
+                                    } as Quiz;
+                                    console.log("[CardFeed] Updated card state:", { id: updatedCard.id, is_like: updatedCard.is_like, likes: updatedCard.likes, dislikes: updatedCard.dislikes });
+                                    return updatedCard;
+                                  }
+                                  return c;
+                                })
+                              );
+                              // Don't reload - the card update is already in place
+                              // The card will remain visible with its new status
+                            } else {
+                              const error = await response.json();
+                              console.error("[CardFeed] Reject vote error:", error);
+                              await loadCards();
+                            }
+                          } catch (error) {
+                            console.error("Error voting:", error);
+                            await loadCards();
+                          }
+                        }}
+                        disabled={card.is_like === false}
+                        className={`flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-xs font-medium transition-colors ${
+                          card.is_like === false
+                            ? "bg-red-500/20 text-red-500"
+                            : "border border-[hsl(var(--border))] hover:bg-[hsl(var(--secondary))] text-foreground"
+                        } disabled:opacity-50 disabled:cursor-not-allowed`}
+                      >
+                        <X className="h-4 w-4" />
+                        <span>Reject</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
               ) : null}
 
-              {/* Like/Dislike Buttons */}
+              {/* Like/Dislike Buttons - Only show for non-syllabus replacement cards */}
+              {cardData.type !== "syllabus_replacement" && (
               <div className={`mt-3 pt-2.5 border-t flex items-center gap-3 ${
                 cardData.type === "quiz"
                   ? "border-[hsl(200,100%,50%)]"
@@ -1475,6 +1689,7 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
                     className={`h-3.5 w-3.5 ${card.is_like === true ? "fill-current" : ""}`}
                   />
                   <span>Like</span>
+                  <span className="text-xs font-semibold">{card.likes || 0}</span>
                 </button>
                 <button
                   onClick={() => handleInteraction(card.id, false)}
@@ -1489,22 +1704,17 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
                     className={`h-3.5 w-3.5 ${card.is_like === false ? "fill-current" : ""}`}
                   />
                   <span>Dislike</span>
+                  <span className="text-xs font-semibold">{card.dislikes || 0}</span>
                 </button>
-                {(() => {
-                  const netLikes = (card.likes || 0) - (card.dislikes || 0);
-                  const netLikesColor = netLikes > 0 ? "text-[hsl(120,100%,50%)]" : netLikes < 0 ? "text-[hsl(0,100%,60%)]" : "text-[hsl(var(--muted-foreground))]";
-                  return (
-                    <span className={`text-xs font-semibold ${netLikesColor}`}>
-                      {netLikes > 0 ? "+" : ""}{netLikes}
-                    </span>
-                  );
-                })()}
               </div>
+              )}
 
-              {/* Comments Section */}
+              {/* Comments Section - Only show for non-syllabus replacement cards */}
+              {cardData.type !== "syllabus_replacement" && (
               <div className="mt-2.5">
                 <QuizComments key={card.id} quizId={card.id} />
               </div>
+              )}
 
             </div>
           </div>

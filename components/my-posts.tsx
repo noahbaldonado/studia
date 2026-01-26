@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Trash2, Edit2, Loader2, X, Check } from "lucide-react";
+import { Trash2, Edit2, Loader2, X, Check, ThumbsUp, ThumbsDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { FeedSortFilterControls, SortMode } from "@/components/feed-sort-filter-controls";
 
@@ -329,15 +329,18 @@ export function MyPosts({ userId }: MyPostsProps) {
                     <span className="text-xs text-zinc-400">• {formatRelativeTime(post.created_at)}</span>
                   </div>
                   <div className="flex items-center gap-4 mb-2">
-                    {(() => {
-                      const netLikes = (post.likes || 0) - (post.dislikes || 0);
-                      const netLikesColor = netLikes > 0 ? "text-green-600" : netLikes < 0 ? "text-red-600" : "text-gray-500";
-                      return (
-                        <span className={`text-xs font-semibold ${netLikesColor}`}>
-                          {netLikes > 0 ? "+" : ""}{netLikes} net likes
-                        </span>
-                      );
-                    })()}
+                    <div className="flex items-center gap-1.5">
+                      <ThumbsUp className="h-4 w-4 text-[hsl(120,100%,50%)]" />
+                      <span className="text-xs font-semibold text-[hsl(120,100%,50%)]">
+                        {post.likes || 0}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <ThumbsDown className="h-4 w-4 text-[hsl(0,100%,60%)]" />
+                      <span className="text-xs font-semibold text-[hsl(0,100%,60%)]">
+                        {post.dislikes || 0}
+                      </span>
+                    </div>
                   </div>
                   <p className="text-sm text-zinc-700 mb-2">{(postData.content as any)?.question || ""}</p>
                   {confirmDeleteId === post.id && (
@@ -646,15 +649,18 @@ export function MyPosts({ userId }: MyPostsProps) {
                     <span className="text-xs text-zinc-400">• {formatRelativeTime(post.created_at)}</span>
                   </div>
                   <div className="flex items-center gap-4 mb-2">
-                    {(() => {
-                      const netLikes = (post.likes || 0) - (post.dislikes || 0);
-                      const netLikesColor = netLikes > 0 ? "text-green-600" : netLikes < 0 ? "text-red-600" : "text-gray-500";
-                      return (
-                        <span className={`text-xs font-semibold ${netLikesColor}`}>
-                          {netLikes > 0 ? "+" : ""}{netLikes} net likes
-                        </span>
-                      );
-                    })()}
+                    <div className="flex items-center gap-1.5">
+                      <ThumbsUp className="h-4 w-4 text-[hsl(120,100%,50%)]" />
+                      <span className="text-xs font-semibold text-[hsl(120,100%,50%)]">
+                        {post.likes || 0}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <ThumbsDown className="h-4 w-4 text-[hsl(0,100%,60%)]" />
+                      <span className="text-xs font-semibold text-[hsl(0,100%,60%)]">
+                        {post.dislikes || 0}
+                      </span>
+                    </div>
                   </div>
                   <p className="text-sm text-zinc-700">{typeof postData.content === 'string' ? postData.content : ""}</p>
                   {confirmDeleteId === post.id && (

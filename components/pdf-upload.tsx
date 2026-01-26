@@ -135,7 +135,7 @@ export function PdfUpload({ courseId, onUploadSuccess }: PdfUploadProps) {
           className="mb-2"
         >
           <Upload className="h-4 w-4 mr-2" />
-          {isUploading ? "Uploading..." : "Upload PDF"}
+          {isUploading ? "Generating content..." : "Upload PDF"}
         </Button>
         <p className="text-xs text-zinc-500 mt-2">
           Only PDF files are supported
@@ -145,7 +145,7 @@ export function PdfUpload({ courseId, onUploadSuccess }: PdfUploadProps) {
       {uploadSuccess && (
         <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-lg flex items-center gap-2">
           <Check className="h-4 w-4 text-green-600" />
-          <p className="text-sm text-green-600">PDF uploaded successfully!</p>
+          <p className="text-sm text-green-600">Content generated successfully!</p>
         </div>
       )}
 

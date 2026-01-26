@@ -191,7 +191,7 @@ export function QuizComments({ quizId }: QuizCommentsProps) {
     <div className="mt-3 border-t border-[hsl(var(--border))] pt-3">
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className="flex items-center gap-2 text-xs font-medium text-[hsl(var(--primary))] hover:text-[hsl(var(--accent))] w-full text-left"
+        className="flex items-center gap-2 text-xs font-medium text-[hsl(var(--primary))] hover:text-[hsl(var(--accent))] focus:outline-none focus:text-[hsl(var(--primary))] w-full text-left"
       >
         <MessageSquare className="w-4 h-4" />
         <span>

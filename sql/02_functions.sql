@@ -58,7 +58,9 @@ GRANT EXECUTE ON FUNCTION increment_user_interaction_score(UUID, UUID, INTEGER) 
 -- Total interaction score (sum of all user scores) is used to boost posts
 -- Comment count boosts posts with more engagement
 -- Reply boost increases score if someone replied to the user's comment
-CREATE OR REPLACE FUNCTION get_scored_quizzes_with_tags(p_user_id UUID, p_limit INT DEFAULT 50)
+-- Drop the function first if it exists (to handle return type changes)
+DROP FUNCTION IF EXISTS get_scored_quizzes_with_tags(UUID, INT);
+CREATE FUNCTION get_scored_quizzes_with_tags(p_user_id UUID, p_limit INT DEFAULT 50)
 RETURNS TABLE (
   id UUID,
   data JSONB,
@@ -72,14 +74,11 @@ RETURNS TABLE (
   is_like BOOLEAN,
   user_id UUID,
   author_username TEXT,
-  pdf_id UUID,
-  pdf_owner_id UUID,
-  pdf_owner_username TEXT,
+  generated_from_pdf BOOLEAN,
   course_name TEXT,
   has_interacted BOOLEAN,
   user_interaction_score INTEGER,
-  author_profile_picture_url TEXT,
-  pdf_owner_profile_picture_url TEXT
+  author_profile_picture_url TEXT
 ) AS $$
 DECLARE
   max_tag_sum DOUBLE PRECISION;
@@ -151,10 +150,7 @@ BEGIN
       q.user_id,
       author_profile.username AS author_username,
       author_profile.profile_picture_url AS author_profile_picture_url,
-      q.pdf_id,
-      pdf_owner_profile.id AS pdf_owner_id,
-      pdf_owner_profile.username AS pdf_owner_username,
-      pdf_owner_profile.profile_picture_url AS pdf_owner_profile_picture_url,
+      q.generated_from_pdf,
       COALESCE(SUM(t.score), 0) AS tag_sum,
       COALESCE(p.rating, 7.5) AS user_rating,
       qi.is_like,
@@ -191,14 +187,12 @@ BEGIN
     INNER JOIN course c ON c.id = q.course_id
     LEFT JOIN profile p ON p.id = q.user_id
     LEFT JOIN profile author_profile ON author_profile.id = q.user_id
-    LEFT JOIN course_pdfs pdf ON pdf.id = q.pdf_id
-    LEFT JOIN profile pdf_owner_profile ON pdf_owner_profile.id = pdf.user_id
     LEFT JOIN quiz_tag qt ON qt.quiz_id = q.id
     LEFT JOIN tag t ON t.id = qt.tag_id
     LEFT JOIN quiz_interaction qi ON qi.quiz_id = q.id AND qi.user_id = p_user_id
     GROUP BY q.id, q.course_id, c.name, q.rating, q.likes, q.dislikes, q.created_at, q.user_id, 
-             author_profile.username, author_profile.profile_picture_url, q.pdf_id, pdf_owner_profile.id, pdf_owner_profile.username, 
-             pdf_owner_profile.profile_picture_url, p.rating, qi.is_like, qi.quiz_id, qi.interaction_score, p_user_id
+             author_profile.username, author_profile.profile_picture_url, q.generated_from_pdf, 
+             p.rating, qi.is_like, qi.quiz_id, qi.interaction_score, p_user_id
   )
   SELECT
     sq.id,
@@ -246,20 +240,16 @@ BEGIN
     sq.is_like,
     sq.user_id,
     sq.author_username,
-    sq.pdf_id,
-    sq.pdf_owner_id,
-    sq.pdf_owner_username,
+    sq.generated_from_pdf,
     sq.course_name,
     sq.has_interacted,
     sq.user_interaction_score,
-    sq.author_profile_picture_url,
-    sq.pdf_owner_profile_picture_url
+    sq.author_profile_picture_url
   FROM scored_quizzes sq
   LEFT JOIN quiz_tag qt ON qt.quiz_id = sq.id
   LEFT JOIN tag t ON t.id = qt.tag_id
   GROUP BY sq.id, sq.data, sq.course_id, sq.course_name, sq.rating, sq.likes, sq.dislikes, sq.created_at, 
-           sq.user_id, sq.author_username, sq.author_profile_picture_url, sq.pdf_id, sq.pdf_owner_id, sq.pdf_owner_username, 
-           sq.pdf_owner_profile_picture_url, sq.tag_sum, sq.user_rating, sq.is_like, sq.has_interacted, sq.user_interaction_score, 
+           sq.user_id, sq.author_username, sq.author_profile_picture_url, sq.generated_from_pdf, sq.tag_sum, sq.user_rating, sq.is_like, sq.has_interacted, sq.user_interaction_score, 
            sq.total_interaction_score, sq.comment_count, sq.has_reply_to_user_comment, sq.days_old, max_tag_sum, max_total_interaction_score, max_comment_count
   ORDER BY final_score DESC
   LIMIT p_limit;

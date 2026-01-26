@@ -79,9 +79,9 @@ export function CourseActions({ courseId, courseLink }: CourseActionsProps) {
             }`}
           >
             {uploadStatus === 'uploading'
-              ? 'Uploading...'
+              ? 'Generating content...'
               : uploadStatus === 'success'
-              ? 'Successfully uploaded'
+              ? 'Content generated successfully!'
               : 'Error occurred'}
           </div>
         </div>

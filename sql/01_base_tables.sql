@@ -63,6 +63,7 @@ CREATE TABLE IF NOT EXISTS course (
   name TEXT NOT NULL,
   subject TEXT,
   course_link TEXT,
+  syllabus_url TEXT, -- URL to current syllabus PDF in Supabase Storage
   created_at TIMESTAMPTZ DEFAULT NOW(),
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
@@ -75,9 +76,16 @@ ALTER TABLE course ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Anyone can read courses" ON course
   FOR SELECT USING (true);
 
+-- Authenticated users can update syllabus_url
+CREATE POLICY "Authenticated users can update syllabus_url" ON course
+  FOR UPDATE USING (auth.role() = 'authenticated')
+  WITH CHECK (auth.role() = 'authenticated');
+
 -- Indexes for course
 CREATE INDEX IF NOT EXISTS idx_course_name ON course(name);
 CREATE INDEX IF NOT EXISTS idx_course_subject ON course(subject);
+CREATE INDEX IF NOT EXISTS idx_course_syllabus_url ON course(syllabus_url) 
+WHERE syllabus_url IS NOT NULL;
 
 -- Course subscription table: Tracks which users are subscribed to which courses
 CREATE TABLE IF NOT EXISTS course_subscription (

@@ -17,8 +17,8 @@ These scripts should be run in your Supabase database. You can execute them via:
 ### Required Migrations
 
 1. **`01_base_tables.sql`** - **Run this FIRST!**
-   - Creates all core tables: `profile`, `course`, `course_subscription`, `course_pdfs`, `quiz`, `tag`, `quiz_tag`
-   - Includes all columns: `username`, `profile_picture_url`, `pdf_id`, `likes`, `dislikes`
+   - Creates all core tables: `profile`, `course`, `course_subscription`, `quiz`, `tag`, `quiz_tag`
+   - Includes all columns: `username`, `profile_picture_url`, `syllabus_url`, `likes`, `dislikes`, `generated_from_pdf`
    - Sets up RLS policies and indexes
    - Creates triggers for `updated_at` timestamps
 
@@ -46,6 +46,11 @@ These scripts should be run in your Supabase database. You can execute them via:
    - Creates `message` table for individual messages
    - Sets up RLS policies and indexes
    - Creates triggers to update conversation timestamps when messages are sent
+
+6. **`08_remove_pdf_storage.sql`** - **Run AFTER base tables**
+   - Removes `pdf_id` column from `quiz` table
+   - Adds `generated_from_pdf` boolean column to `quiz` table
+   - Drops `course_pdfs` table (PDFs are no longer stored permanently)
 
 ### Optional Migrations
 
@@ -75,6 +80,7 @@ These scripts should be run in your Supabase database. You can execute them via:
 - **`poll_vote`**: Votes on poll content
 - **`conversation`**: 1-on-1 conversations between users
 - **`message`**: Individual messages in conversations
+- **Note**: Syllabus replacements are now stored as quiz entries with `type: "syllabus_replacement"` in the `quiz` table
 
 ### Functions
 
@@ -93,6 +99,10 @@ Before running `04_storage_policies.sql`, create these buckets in Supabase Dashb
 2. **`profile-pictures`**: Public bucket for user profile pictures
    - Public read access
    - Users can only upload/update/delete their own pictures (based on folder structure)
+
+3. **`course-syllabi`**: Public bucket for course syllabus files
+   - Public read access
+   - Authenticated users can upload/update/delete
 
 ## Permissions
 

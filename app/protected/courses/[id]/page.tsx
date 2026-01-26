@@ -7,6 +7,7 @@ import { CourseActions } from "@/components/course-actions";
 import { CardFeed } from "@/components/card-feed";
 import { FeedSortFilterControls, SortMode } from "@/components/feed-sort-filter-controls";
 import { CourseFeedClient } from "@/components/course-feed-client";
+import { CourseSyllabus } from "@/components/course-syllabus";
 
 export default async function CourseDetailPage({
   params,
@@ -49,6 +50,11 @@ export default async function CourseDetailPage({
       
       {/* Action Icons */}
       <CourseActions courseId={id} courseLink={course.course_link} />
+
+      {/* Syllabus Section */}
+      <div className="mt-12 border-t border-[hsl(var(--border))] pt-8">
+        <CourseSyllabus courseId={id} userId={user.id} />
+      </div>
 
       {/* Course Feed */}
       <div className="mt-12 border-t border-[hsl(var(--border))] pt-8">

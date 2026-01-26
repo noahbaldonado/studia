@@ -40,7 +40,7 @@ export default async function UserPostsPage({
         >
           <ChevronLeft className="h-5 w-5" />
         </Link>
-        <h1 className="text-2xl font-bold">My Posts - {displayName}</h1>
+        <h1 className="text-2xl font-bold">Posts - {displayName}</h1>
       </div>
 
       <MyPosts userId={userId} />
