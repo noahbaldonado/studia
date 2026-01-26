@@ -27,8 +27,8 @@ export default async function UserProfilePage() {
     ? formatUsername(profile.username)
     : metadata?.name || user.user_metadata?.full_name || "Profile";
   const userRating = Math.min(10, profile?.rating || 7.5);
-  const currentStreak = metadata?.current_streak || 0;
-  const quizRushBestScore = metadata?.quiz_rush_best_score || 0;
+  const currentStreak = (typeof metadata?.current_streak === 'number' ? metadata.current_streak : 0);
+  const quizRushBestScore = (typeof metadata?.quiz_rush_best_score === 'number' ? metadata.quiz_rush_best_score : 0);
 
   // Get counts
   const { count: coursesCount } = await supabase
