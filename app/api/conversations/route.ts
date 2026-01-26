@@ -73,7 +73,14 @@ export async function GET(request: NextRequest) {
     }
 
     // Group messages by conversation and get the latest one
-    const latestMessageMap = new Map<string, typeof latestMessages[0]>();
+    type MessageType = {
+      conversation_id: string;
+      content: string;
+      created_at: string;
+      sender_id: string;
+      read_at: string | null;
+    };
+    const latestMessageMap = new Map<string, MessageType>();
     latestMessages?.forEach((msg) => {
       if (!latestMessageMap.has(msg.conversation_id)) {
         latestMessageMap.set(msg.conversation_id, msg);
