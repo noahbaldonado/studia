@@ -109,6 +109,9 @@ export async function GET(request: NextRequest) {
             ...c,
             authorName,
             authorProfilePictureUrl: profile?.profile_picture_url || null,
+            authorEmail: metadata?.email || null,
+            likes: commentLikes[c.id]?.likes || 0,
+            dislikes: commentLikes[c.id]?.dislikes || 0,
             netLikes:
               (commentLikes[c.id]?.likes || 0) -
               (commentLikes[c.id]?.dislikes || 0),
