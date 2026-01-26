@@ -359,7 +359,7 @@ export function MessagesClient() {
                     {user.profilePictureUrl ? (
                       <Image
                         src={user.profilePictureUrl}
-                        alt={user.username}
+                        alt={user.username || user.name || "User"}
                         fill
                         className="object-cover"
                         sizes="40px"
