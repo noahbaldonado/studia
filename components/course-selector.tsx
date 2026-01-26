@@ -115,9 +115,18 @@ export function CourseSelector({
     setShowProfessorDropdown(false);
 
     // Find course offering with this professor and current quarter
-    const offering = courseOfferings.find(
+    // If no match with current quarter, find any offering with this professor
+    let offering = courseOfferings.find(
       o => o.professor === professor && o.quarter === selectedQuarter
     );
+    
+    if (!offering && selectedQuarter) {
+      // If no match with current quarter, try to find one with this professor and any quarter
+      offering = courseOfferings.find(o => o.professor === professor);
+      if (offering) {
+        setSelectedQuarter(offering.quarter);
+      }
+    }
 
     if (offering) {
       setSelectedCourseId(offering.id);
@@ -131,9 +140,18 @@ export function CourseSelector({
     setShowQuarterDropdown(false);
 
     // Find course offering with current professor and this quarter
-    const offering = courseOfferings.find(
+    // If no match with current professor, find any offering with this quarter
+    let offering = courseOfferings.find(
       o => o.professor === selectedProfessor && o.quarter === quarter
     );
+    
+    if (!offering && selectedProfessor) {
+      // If no match with current professor, try to find one with this quarter and any professor
+      offering = courseOfferings.find(o => o.quarter === quarter);
+      if (offering) {
+        setSelectedProfessor(offering.professor);
+      }
+    }
 
     if (offering) {
       setSelectedCourseId(offering.id);
@@ -166,10 +184,14 @@ export function CourseSelector({
     return null;
   }
 
+  // Show both dropdowns if there are multiple offerings (even if only one unique professor or quarter)
+  const showProfessorSelector = uniqueProfessors.length > 0;
+  const showQuarterSelector = uniqueQuarters.length > 0;
+
   return (
     <div className="mb-8 space-y-3">
       {/* Professor Selection */}
-      {uniqueProfessors.length > 1 && (
+      {showProfessorSelector && (
         <div className="relative">
           <button
             type="button"
@@ -204,7 +226,7 @@ export function CourseSelector({
       )}
 
       {/* Quarter Selection */}
-      {uniqueQuarters.length > 1 && (
+      {showQuarterSelector && (
         <div className="relative">
           <button
             type="button"

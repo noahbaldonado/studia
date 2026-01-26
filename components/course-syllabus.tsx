@@ -21,14 +21,18 @@ export function CourseSyllabus({ courseId, userId }: CourseSyllabusProps) {
   // Check if user is subscribed
   useEffect(() => {
     async function checkSubscription() {
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("course_subscription")
         .select("user_id")
         .eq("user_id", userId)
         .eq("course_id", courseId)
-        .single();
+        .maybeSingle();
 
-      setIsSubscribed(!!data);
+      if (error && error.code !== "PGRST116") {
+        console.error("Error checking subscription:", error);
+      } else {
+        setIsSubscribed(!!data);
+      }
     }
     checkSubscription();
   }, [courseId, userId, supabase]);
