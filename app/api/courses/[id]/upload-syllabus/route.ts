@@ -161,7 +161,7 @@ export async function POST(
             if (oldPdfData.data && newPdfData.data) {
               // Parse both PDFs
               const pdfParseModule = await import("pdf-parse");
-              const pdfParse = pdfParseModule.default || pdfParseModule;
+              const pdfParse = (pdfParseModule as any).default || pdfParseModule;
 
               const oldArrayBuffer = await oldPdfData.data.arrayBuffer();
               const oldBuffer = Buffer.from(oldArrayBuffer);
