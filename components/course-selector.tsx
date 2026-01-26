@@ -179,18 +179,18 @@ export function CourseSelector({
     );
   }
 
-  // Don't show selector if only one offering
-  if (courseOfferings.length <= 1) {
+  // Don't show selector if no offerings found
+  if (courseOfferings.length === 0) {
     return null;
   }
 
-  // Show both dropdowns if there are multiple offerings (even if only one unique professor or quarter)
+  // Always show both dropdowns if there are any offerings (even if only one unique professor or quarter)
   const showProfessorSelector = uniqueProfessors.length > 0;
   const showQuarterSelector = uniqueQuarters.length > 0;
 
   return (
     <div className="mb-8 space-y-3">
-      {/* Professor Selection */}
+      {/* Professor Selection - Always show if there are any offerings with a professor */}
       {showProfessorSelector && (
         <div className="relative">
           <button
@@ -225,7 +225,7 @@ export function CourseSelector({
         </div>
       )}
 
-      {/* Quarter Selection */}
+      {/* Quarter Selection - Always show if there are any offerings with a quarter */}
       {showQuarterSelector && (
         <div className="relative">
           <button

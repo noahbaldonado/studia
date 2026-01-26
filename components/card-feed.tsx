@@ -1165,21 +1165,26 @@ export function CardFeed({
   if (cards.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-96 gap-4">
-        <div className="text-lg font-semibold">No cards available</div>
-        {hasSubscriptions === false ? (
-          <Link href="/protected/courses">
-            <Button className="bg-[hsl(var(--primary))] hover:opacity-90">
-              Add a course
-            </Button>
-          </Link>
-        ) : hasSubscriptions === true ? (
-          <Link href="/protected/courses">
-            <Button className="bg-[hsl(var(--primary))] hover:opacity-90">
-              Add another course
-            </Button>
-          </Link>
-        ) : (
-          <Button onClick={loadCards}>Reload</Button>
+        <div className="text-lg font-semibold">No content available</div>
+        {/* Only show "Add course" buttons on main feed, not on course page feed */}
+        {!courseFilter && (
+          <>
+            {hasSubscriptions === false ? (
+              <Link href="/protected/courses">
+                <Button className="bg-[hsl(var(--primary))] hover:opacity-90">
+                  Add a course
+                </Button>
+              </Link>
+            ) : hasSubscriptions === true ? (
+              <Link href="/protected/courses">
+                <Button className="bg-[hsl(var(--primary))] hover:opacity-90">
+                  Add another course
+                </Button>
+              </Link>
+            ) : (
+              <Button onClick={loadCards}>Reload</Button>
+            )}
+          </>
         )}
       </div>
     );
