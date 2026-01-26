@@ -23,7 +23,7 @@ export function FeedSortFilterControls({
   sortOptions,
   showCourseFilter = true,
 }: FeedSortFilterControlsProps) {
-  const [courses, setCourses] = useState<Array<{ id: string; name: string }>>([]);
+  const [courses, setCourses] = useState<Array<{ id: string; name: string; professor: string | null; quarter: string | null }>>([]);
   const [loadingCourses, setLoadingCourses] = useState(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -67,7 +67,7 @@ export function FeedSortFilterControls({
       const courseIds = subscriptions.map((s) => s.course_id);
       const { data: courseData } = await supabase
         .from("course")
-        .select("id, name")
+        .select("id, name, professor, quarter")
         .in("id", courseIds)
         .order("name");
 
@@ -93,8 +93,19 @@ export function FeedSortFilterControls({
     setIsDropdownOpen(false);
   };
 
+  const getCourseDisplayName = (course: { name: string; professor: string | null; quarter: string | null }): string => {
+    const parts: string[] = [course.name];
+    if (course.quarter || course.professor) {
+      const details: string[] = [];
+      if (course.quarter) details.push(course.quarter);
+      if (course.professor) details.push(course.professor);
+      parts.push(`(${details.join(", ")})`);
+    }
+    return parts.join(" ");
+  };
+
   const selectedCourseNames = courseFilter
-    ? courses.filter((c) => courseFilter.includes(c.id)).map((c) => c.name)
+    ? courses.filter((c) => courseFilter.includes(c.id)).map((c) => getCourseDisplayName(c))
     : [];
 
   return (
@@ -157,7 +168,7 @@ export function FeedSortFilterControls({
                           onChange={() => toggleCourse(course.id)}
                           className="w-3.5 h-3.5 border-[hsl(var(--border))] bg-[hsl(var(--input))] text-[hsl(var(--primary))] focus:ring-[hsl(var(--primary))]"
                         />
-                        <span className="flex-1 truncate">{course.name}</span>
+                        <span className="flex-1 truncate">{getCourseDisplayName(course)}</span>
                       </label>
                     );
                   })}
@@ -177,6 +188,7 @@ export function FeedSortFilterControls({
           </div>
         </>
       )}
+
     </div>
   );
 }

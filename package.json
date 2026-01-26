@@ -5,7 +5,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "cleanup": "tsx scripts/cleanup-all-data.ts"
+    "cleanup": "tsx scripts/cleanup-all-data.ts",
+    "import-courses": "tsx scripts/import-courses-from-json.ts"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

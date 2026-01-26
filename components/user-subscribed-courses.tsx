@@ -10,6 +10,8 @@ interface Course {
   name: string;
   subject: string;
   course_link?: string;
+  professor: string | null;
+  quarter: string | null;
 }
 
 interface UserSubscribedCoursesProps {
@@ -52,7 +54,7 @@ export function UserSubscribedCourses({ userId, limit = 5, showCount = false }: 
         // Get course details
         const { data: coursesData, error: coursesError } = await supabase
           .from("course")
-          .select("id, name, subject, course_link")
+          .select("id, name, subject, course_link, professor, quarter")
           .in("id", courseIds)
           .order("name");
 
@@ -119,7 +121,22 @@ export function UserSubscribedCourses({ userId, limit = 5, showCount = false }: 
                 <h3 className="font-semibold text-zinc-900 line-clamp-2 mb-1">
                   {course.name}
                 </h3>
-                <p className="text-sm text-zinc-500">{course.subject}</p>
+                <div className="space-y-0.5">
+                  {course.subject && (
+                    <p className="text-sm text-zinc-500">{course.subject}</p>
+                  )}
+                  {(course.professor || course.quarter) && (
+                    <p className="text-xs text-zinc-400">
+                      {course.quarter && course.professor
+                        ? `${course.quarter}, ${course.professor}`
+                        : course.quarter
+                        ? course.quarter
+                        : course.professor
+                        ? course.professor
+                        : null}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
           </div>

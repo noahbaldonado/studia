@@ -77,6 +77,8 @@ interface Quiz {
   data: CardData;
   course_id: string;
   course_name?: string | null;
+  course_professor?: string | null;
+  course_quarter?: string | null;
   rating: number;
   likes: number;
   dislikes: number;
@@ -96,7 +98,10 @@ interface CardFeedProps {
   sortMode?: SortMode;
 }
 
-export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFeedProps) {
+export function CardFeed({ 
+  courseFilter = null, 
+  sortMode = "algorithm",
+}: CardFeedProps) {
   const [cards, setCards] = useState<Quiz[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number | null>>({});
@@ -147,7 +152,9 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
           .from("course_subscription")
           .select("course_id")
           .eq("user_id", user.id);
+        
         subscribedCourseIds = subscriptions?.map((s) => s.course_id) || [];
+        
         setHasSubscriptions(subscribedCourseIds.length > 0);
       }
 
@@ -195,7 +202,6 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
           if (isTypeMismatch) {
             console.error("Type mismatch error in database function. Please run: sql/15_update_scoring_with_recency.sql");
           } else if (isFunctionNotFound) {
-            console.warn("Database function 'get_scored_quizzes_with_tags' not found. Falling back to direct query.");
           } else {
             console.error("Error calling database function. Falling back to direct query.");
           }
@@ -204,7 +210,6 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
           data = null;
         } else if (data && (!Array.isArray(data) || data.length === 0)) {
           // If RPC returned successfully but with no data, fall back to direct query
-          console.warn("RPC returned no data, falling back to direct query.");
           data = null;
         }
       }
@@ -258,13 +263,13 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
               .select("id, username, profile_picture_url")
               .in("id", userIds);
             
-            // Get course names
+            // Get course names, professor, and quarter
             const { data: courses } = await supabase
               .from("course")
-              .select("id, name")
+              .select("id, name, professor, quarter")
               .in("id", courseIds);
             
-            const courseMap = new Map((courses || []).map((c: any) => [c.id, c.name]));
+            const courseMap = new Map((courses || []).map((c: any) => [c.id, { name: c.name, professor: c.professor, quarter: c.quarter }]));
             
             const authorMap = new Map((authorProfiles || []).map((p: any) => [p.id, { username: p.username, profile_picture_url: p.profile_picture_url }]));
             
@@ -286,15 +291,24 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
               });
             }
             
-            // Helper to get course name from potentially array or object
-            const getCourseName = (course: any, courseMap: Map<string, string>, courseId: string): string | null => {
+            // Helper to get course info from potentially array or object
+            const getCourseInfo = (course: any, courseMap: Map<string, { name: string; professor: string | null; quarter: string | null }>, courseId: string): { name: string | null; professor: string | null; quarter: string | null } => {
               if (Array.isArray(course) && course.length > 0) {
-                return course[0]?.name || null;
+                return {
+                  name: course[0]?.name || null,
+                  professor: course[0]?.professor || null,
+                  quarter: course[0]?.quarter || null,
+                };
               }
               if (course && typeof course === 'object' && 'name' in course) {
-                return course.name || null;
+                return {
+                  name: course.name || null,
+                  professor: course.professor || null,
+                  quarter: course.quarter || null,
+                };
               }
-              return courseMap.get(courseId) || null;
+              const courseInfo = courseMap.get(courseId);
+              return courseInfo || { name: null, professor: null, quarter: null };
             };
             
             let cardsWithTags = fallbackData.map((quiz: any) => {
@@ -309,12 +323,15 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
               
               const userInteraction = interactionMap.get(quiz.id);
               const isSyllabusReplacement = cardData.type === "syllabus_replacement";
+              const courseInfo = getCourseInfo(quiz.course, courseMap, quiz.course_id);
               
               return {
                 id: quiz.id,
                 data: cardData,
                 course_id: quiz.course_id,
-                course_name: getCourseName(quiz.course, courseMap, quiz.course_id),
+                course_name: courseInfo.name,
+                course_professor: courseInfo.professor,
+                course_quarter: courseInfo.quarter,
                 rating: quiz.rating,
                 likes: quiz.likes || 0,
                 dislikes: quiz.dislikes || 0,
@@ -413,13 +430,13 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
           generated_from_pdf?: boolean | null;
         }
         
-        // Get course names for RPC data (if not already included in response)
+        // Get course names, professor, and quarter for RPC data (if not already included in response)
         const rpcCourseIds = [...new Set(data.map((q: RPCQuizResponse) => q.course_id))];
         const { data: rpcCourses } = await supabase
           .from("course")
-          .select("id, name")
+          .select("id, name, professor, quarter")
           .in("id", rpcCourseIds);
-        const rpcCourseMap = new Map((rpcCourses || []).map((c: any) => [c.id, c.name]));
+        const rpcCourseMap = new Map((rpcCourses || []).map((c: any) => [c.id, { name: c.name, professor: c.professor, quarter: c.quarter }]));
         
         let cardsWithTags = data.map((quiz: RPCQuizResponse) => {
           // Extract tag names from the JSONB tags array
@@ -435,11 +452,14 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
           
           const isSyllabusReplacement = cardData.type === "syllabus_replacement";
           
+          const courseInfo = rpcCourseMap.get(quiz.course_id);
           return {
             id: quiz.id,
             data: cardData,
             course_id: quiz.course_id,
-            course_name: quiz.course_name || rpcCourseMap.get(quiz.course_id) || null,
+            course_name: quiz.course_name || courseInfo?.name || null,
+            course_professor: courseInfo?.professor || null,
+            course_quarter: courseInfo?.quarter || null,
             rating: quiz.rating,
             likes: quiz.likes || 0,
             dislikes: quiz.dislikes || 0,
@@ -535,7 +555,6 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
         const data = c.data as any;
         return data?.type === "syllabus_replacement";
       });
-      console.log(`[CardFeed] Found ${syllabusReplacements.length} syllabus replacement cards out of ${regularCards.length} total cards`);
       
       if (regularCards.length > 0) {
         regularCards.sort((a, b) => {
@@ -803,8 +822,6 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
       const result = await response.json();
 
       // Debug: Log the response
-      console.log("API response:", result);
-      console.log("Optimistic values:", { optimisticLikes, optimisticDislikes });
 
       // Sync with server response - use server values if they exist, otherwise keep optimistic
       setCards((prev) =>
@@ -812,16 +829,6 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
           if (c.id === quizId) {
             const serverLikes = typeof result.likes === 'number' ? result.likes : null;
             const serverDislikes = typeof result.dislikes === 'number' ? result.dislikes : null;
-            
-            console.log("Updating card:", {
-              quizId,
-              serverLikes,
-              serverDislikes,
-              optimisticLikes,
-              optimisticDislikes,
-              finalLikes: serverLikes !== null ? serverLikes : optimisticLikes,
-              finalDislikes: serverDislikes !== null ? serverDislikes : optimisticDislikes,
-            });
             
             return { 
               ...c, 
@@ -1292,24 +1299,37 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
                 </p>
               </div>
               {card.course_name && (
-                <Link 
-                  href={`/protected/courses/${card.course_id}`}
-                  className={`text-xs font-semibold hover:opacity-80 transition-opacity inline-block ${
-                    cardData.type === "quiz"
-                      ? "text-[hsl(200,100%,50%)]"
-                      : cardData.type === "poll"
-                      ? "text-[hsl(0,100%,60%)]"
-                      : cardData.type === "flashcard"
-                      ? "text-[hsl(120,100%,50%)]"
-                      : cardData.type === "sticky_note"
-                      ? "text-[hsl(60,100%,50%)]"
-                      : cardData.type === "syllabus_replacement"
-                      ? "text-[hsl(280,100%,50%)]"
-                      : "text-[hsl(var(--primary))]"
-                  }`}
-                >
-                  {card.course_name}
-                </Link>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <Link 
+                    href={`/protected/courses/${card.course_id}`}
+                    className={`text-xs font-semibold hover:opacity-80 transition-opacity inline-block ${
+                      cardData.type === "quiz"
+                        ? "text-[hsl(200,100%,50%)]"
+                        : cardData.type === "poll"
+                        ? "text-[hsl(0,100%,60%)]"
+                        : cardData.type === "flashcard"
+                        ? "text-[hsl(120,100%,50%)]"
+                        : cardData.type === "sticky_note"
+                        ? "text-[hsl(60,100%,50%)]"
+                        : cardData.type === "syllabus_replacement"
+                        ? "text-[hsl(280,100%,50%)]"
+                        : "text-[hsl(var(--primary))]"
+                    }`}
+                  >
+                    {card.course_name}
+                  </Link>
+                  {(card.course_professor || card.course_quarter) && (
+                    <span className="text-xs text-[hsl(var(--muted-foreground))]">
+                      {card.course_quarter && card.course_professor
+                        ? `• ${card.course_quarter}, ${card.course_professor}`
+                        : card.course_quarter
+                        ? `• ${card.course_quarter}`
+                        : card.course_professor
+                        ? `• ${card.course_professor}`
+                        : null}
+                    </span>
+                  )}
+                </div>
               )}
             </div>
 
@@ -1564,8 +1584,6 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
                             );
                             if (response.ok) {
                               const result = await response.json();
-                              console.log("[CardFeed] Approve vote response:", result);
-                              console.log("[CardFeed] Current card state before update:", { id: card.id, is_like: card.is_like, likes: card.likes, dislikes: card.dislikes });
                               // Update with server response
                               setCards((prevCards) =>
                                 prevCards.map((c) => {
@@ -1586,7 +1604,6 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
                                         },
                                       },
                                     } as Quiz;
-                                    console.log("[CardFeed] Updated card state:", { id: updatedCard.id, is_like: updatedCard.is_like, likes: updatedCard.likes, dislikes: updatedCard.dislikes });
                                     return updatedCard;
                                   }
                                   return c;
@@ -1595,12 +1612,9 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
                               // Don't reload - the card update is already in place
                               // The card will remain visible with its new status
                             } else {
-                              const error = await response.json();
-                              console.error("[CardFeed] Approve vote error:", error);
                               await loadCards();
                             }
                           } catch (error) {
-                            console.error("Error voting:", error);
                             await loadCards();
                           }
                         }}
@@ -1627,8 +1641,6 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
                             );
                             if (response.ok) {
                               const result = await response.json();
-                              console.log("[CardFeed] Reject vote response:", result);
-                              console.log("[CardFeed] Current card state before update:", { id: card.id, is_like: card.is_like, likes: card.likes, dislikes: card.dislikes });
                               // Update with server response
                               setCards((prevCards) =>
                                 prevCards.map((c) => {
@@ -1648,7 +1660,6 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
                                         },
                                       },
                                     } as Quiz;
-                                    console.log("[CardFeed] Updated card state:", { id: updatedCard.id, is_like: updatedCard.is_like, likes: updatedCard.likes, dislikes: updatedCard.dislikes });
                                     return updatedCard;
                                   }
                                   return c;
@@ -1657,12 +1668,9 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
                               // Don't reload - the card update is already in place
                               // The card will remain visible with its new status
                             } else {
-                              const error = await response.json();
-                              console.error("[CardFeed] Reject vote error:", error);
                               await loadCards();
                             }
                           } catch (error) {
-                            console.error("Error voting:", error);
                             await loadCards();
                           }
                         }}

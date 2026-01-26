@@ -72,7 +72,24 @@ The sql/ directory contains consolidated migration files that set up the databas
 6. **`06_messages.sql`** - Run after additional tables
    - Creates messaging system tables for 1-on-1 conversations
 
+7. **`09_add_professor_quarter.sql`** - Run after base tables
+   - Adds `professor` and `quarter` columns to the `course` table
+   - Allows multiple course offerings with the same name but different professors/quarters
+   - Creates indexes for efficient lookups
+
 See `sql/README.md` for detailed information about each migration.
+
+### Course Scraper
+
+The project includes a Python scraper to automatically fetch courses from UCSC's class search system. This is useful for populating the database with real course data.
+
+**Quick Start:**
+1. Install Python dependencies: `pip install -r scripts/requirements.txt`
+2. Install ChromeDriver (required for Selenium)
+3. Run the scraper: `python3 scripts/scrape_ucsc.py ucsc_courses.json`
+4. Import courses: `npm run import-courses ucsc_courses.json`
+
+For detailed instructions, see `scripts/README.md`.
 
 ### Available Scripts
 
@@ -80,6 +97,8 @@ See `sql/README.md` for detailed information about each migration.
 - `npm run build` - builds the app for production
 - `npm run start` - starts the production server
 - `npm run lint` - runs ESLint to check for code issues
+- `npm run import-courses [path/to/courses.json]` - imports courses from JSON file into database (defaults to `ucsc_courses.json`)
+- `npm run cleanup` - deletes all user data, courses, and content from the database (use with caution!)
 
 ### Project Structure
 
@@ -87,6 +106,7 @@ See `sql/README.md` for detailed information about each migration.
 - components/ - React components
 - lib/ - utility functions and Supabase clients
 - sql/ - database migration files
+- scripts/ - utility scripts for scraping and importing courses
 
 ### Deployment
 
@@ -102,6 +122,10 @@ The app is configured for Vercel deployment. Make sure all environment variables
 - **Manual Content Creation**: Create quizzes, flashcards, sticky notes, and polls manually
 - **Feed System**: Algorithm-based or chronological feed of posts with sorting and filtering
 - **Courses**: Subscribe to courses and organize your study materials
+  - **Professor/Quarter Support**: Courses can have multiple offerings with different professors and quarters
+  - Each professor/quarter combination is treated as a separate course with its own feed and syllabus
+  - Course selector allows switching between offerings on course detail pages
+  - Independent subscriptions per professor/quarter combination
 - **Course Syllabi**: Upload and manage course syllabi with collaborative approval system
   - Upload a syllabus for any course (requires subscription)
   - Replace existing syllabi through a voting system
@@ -110,6 +134,7 @@ The app is configured for Vercel deployment. Make sure all environment variables
 - **Social Features**: Follow other users, comment on posts, like/dislike content
 - **Messaging**: 1-on-1 direct messaging between users
 - **Search**: Search for users by username or name
+- **Course Scraper**: Python script to scrape UCSC courses and import them into the database (see `scripts/README.md` for details)
 
 ### Gamification
 - **Learning Streaks**: Track daily learning streaks with leaderboards

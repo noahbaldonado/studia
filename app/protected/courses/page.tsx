@@ -18,6 +18,8 @@ interface Course {
   id: string;
   name: string;
   subject: string;
+  professor?: string | null;
+  quarter?: string | null;
   course_link?: string;
   isSubscribed?: boolean;
   followingSubscribers?: FollowingUser[];
@@ -127,7 +129,7 @@ export default function CoursesPage() {
         // Load first batch quickly to show initial results
         const { data: firstBatch, error: firstError } = await supabase
           .from("course")
-          .select("id, name, subject, course_link")
+          .select("id, name, subject, course_link, professor, quarter")
           .order("name")
           .limit(INITIAL_BATCH_SIZE);
 
@@ -151,7 +153,7 @@ export default function CoursesPage() {
             while (hasMore) {
               const { data, error: fetchError } = await supabase
                 .from("course")
-                .select("id, name, subject, course_link")
+                .select("id, name, subject, course_link, professor, quarter")
                 .order("name")
                 .range(from, from + BATCH_SIZE - 1);
 
@@ -183,72 +185,131 @@ export default function CoursesPage() {
     fetchAllCourses();
   }, [supabase]);
 
-  // Compute sorted courses with subscription status (memoized for performance)
+  // Group courses by name and select representative course_id
   const courses = useMemo(() => {
     if (allCourses.length === 0) return [];
 
-    const coursesWithSubscription = allCourses.map((course) => ({
-      ...course,
-      isSubscribed: subscribedCourseIds.has(course.id),
-      followingSubscribers: courseFollowingMap[course.id] || [],
-    }));
+    // Group courses by name
+    const courseGroups = new Map<string, Course[]>();
+    allCourses.forEach((course) => {
+      if (!courseGroups.has(course.name)) {
+        courseGroups.set(course.name, []);
+      }
+      courseGroups.get(course.name)!.push(course);
+    });
+
+    // For each group, select a representative course
+    const groupedCourses: Course[] = [];
+    courseGroups.forEach((courseList, courseName) => {
+      // Prefer subscribed course, or most recent quarter, or first one
+      const subscribed = courseList.find(c => subscribedCourseIds.has(c.id));
+      if (subscribed) {
+        groupedCourses.push({
+          ...subscribed,
+          isSubscribed: true,
+          followingSubscribers: courseFollowingMap[subscribed.id] || [],
+        });
+      } else {
+        // Sort by quarter (most recent first), then by professor
+        const sorted = [...courseList].sort((a, b) => {
+          if (a.quarter && b.quarter) {
+            const quarterCompare = b.quarter.localeCompare(a.quarter);
+            if (quarterCompare !== 0) return quarterCompare;
+          }
+          if (a.professor && b.professor) {
+            return a.professor.localeCompare(b.professor);
+          }
+          return 0;
+        });
+        const representative = sorted[0];
+        groupedCourses.push({
+          ...representative,
+          isSubscribed: false,
+          followingSubscribers: courseFollowingMap[representative.id] || [],
+        });
+      }
+    });
 
     // Sort: subscribed first, then alphabetically
-    coursesWithSubscription.sort((a, b) => {
+    groupedCourses.sort((a, b) => {
       if (a.isSubscribed && !b.isSubscribed) return -1;
       if (!a.isSubscribed && b.isSubscribed) return 1;
       return a.name.localeCompare(b.name);
     });
 
-    return coursesWithSubscription;
+    return groupedCourses;
   }, [allCourses, subscribedCourseIds, courseFollowingMap]);
 
   // Filter courses based on search query (memoized for performance)
   const filteredCourses = useMemo(() => {
     if (!searchQuery.trim()) {
-      // Return sorted courses (same as `courses` but computed directly to avoid dependency)
       return courses;
     }
 
     const query = searchQuery.toLowerCase();
-    const filtered = allCourses
-      .map((course) => ({
-        ...course,
-        isSubscribed: subscribedCourseIds.has(course.id),
-        followingSubscribers: courseFollowingMap[course.id] || [],
-      }))
-      .filter(
-        (course) =>
-          course.name.toLowerCase().includes(query) ||
-          course.subject.toLowerCase().includes(query)
-      )
-      // Maintain sort: subscribed first, then alphabetically
-      .sort((a, b) => {
-        if (a.isSubscribed && !b.isSubscribed) return -1;
-        if (!a.isSubscribed && b.isSubscribed) return 1;
-        return a.name.localeCompare(b.name);
-      });
-    
-    return filtered;
-  }, [searchQuery, courses, allCourses, subscribedCourseIds, courseFollowingMap]);
+    return courses.filter(
+      (course) =>
+        course.name.toLowerCase().includes(query) ||
+        course.subject.toLowerCase().includes(query)
+    );
+  }, [searchQuery, courses]);
 
   // Reset to page 1 when search query changes
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery]);
 
-  // Get autocomplete suggestions (top 5 matches)
+  // Get autocomplete suggestions (top 5 matches, grouped by course name)
   const suggestions = useMemo(() => {
     if (!searchQuery.trim() || searchQuery.length < 2) return [];
     const query = searchQuery.toLowerCase();
-    return allCourses
-      .filter(
-        (course) =>
-          course.name.toLowerCase().includes(query) ||
-          course.subject.toLowerCase().includes(query)
-      )
-      .slice(0, 5);
-  }, [searchQuery, allCourses]);
+    
+    // Group courses by name (same logic as main courses grouping)
+    const courseGroups = new Map<string, Course[]>();
+    allCourses.forEach((course) => {
+      if (
+        course.name.toLowerCase().includes(query) ||
+        course.subject.toLowerCase().includes(query)
+      ) {
+        if (!courseGroups.has(course.name)) {
+          courseGroups.set(course.name, []);
+        }
+        courseGroups.get(course.name)!.push(course);
+      }
+    });
+
+    // For each group, select a representative course (same logic as main grouping)
+    const groupedSuggestions: Course[] = [];
+    courseGroups.forEach((courseList, courseName) => {
+      const subscribed = courseList.find(c => subscribedCourseIds.has(c.id));
+      if (subscribed) {
+        groupedSuggestions.push(subscribed);
+      } else {
+        const sorted = [...courseList].sort((a, b) => {
+          if (a.quarter && b.quarter) {
+            const quarterCompare = b.quarter.localeCompare(a.quarter);
+            if (quarterCompare !== 0) return quarterCompare;
+          }
+          if (a.professor && b.professor) {
+            return a.professor.localeCompare(b.professor);
+          }
+          return 0;
+        });
+        groupedSuggestions.push(sorted[0]);
+      }
+    });
+
+    // Sort: subscribed first, then alphabetically
+    groupedSuggestions.sort((a, b) => {
+      const aSubscribed = subscribedCourseIds.has(a.id);
+      const bSubscribed = subscribedCourseIds.has(b.id);
+      if (aSubscribed && !bSubscribed) return -1;
+      if (!aSubscribed && bSubscribed) return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    return groupedSuggestions.slice(0, 5);
+  }, [searchQuery, allCourses, subscribedCourseIds]);
 
   // Pagination
   const totalPages = Math.ceil(

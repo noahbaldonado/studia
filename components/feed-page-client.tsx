@@ -22,7 +22,10 @@ export function FeedPageClient() {
           ]}
         />
       </div>
-      <CardFeed courseFilter={courseFilter} sortMode={sortMode} />
+      <CardFeed 
+        courseFilter={courseFilter} 
+        sortMode={sortMode}
+      />
     </>
   );
 }

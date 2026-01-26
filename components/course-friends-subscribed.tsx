@@ -6,8 +6,8 @@ import Link from "next/link";
 
 interface Friend {
   id: string;
-  name: string;
-  email: string | null;
+  username: string | null;
+  name: string | null;
 }
 
 interface CourseFriendsSubscribedProps {
@@ -57,6 +57,9 @@ export function CourseFriendsSubscribed({ courseId }: CourseFriendsSubscribedPro
 
   const firstFriend = friends[0];
   const otherCount = friends.length - 1;
+  const firstFriendDisplay = firstFriend.username 
+    ? `@${firstFriend.username}` 
+    : firstFriend.name || `User ${firstFriend.id.substring(0, 8)}`;
 
   return (
     <>
@@ -68,10 +71,10 @@ export function CourseFriendsSubscribed({ courseId }: CourseFriendsSubscribedPro
           <Users className="h-4 w-4 text-blue-600" />
           <span>
             {friends.length === 1
-              ? `${firstFriend.name} subscribes`
+              ? `${firstFriendDisplay} subscribes`
               : otherCount === 1
-              ? `${firstFriend.name} and 1 other subscribe`
-              : `${firstFriend.name} and ${otherCount} others subscribe`}
+              ? `${firstFriendDisplay} and 1 other subscribe`
+              : `${firstFriendDisplay} and ${otherCount} others subscribe`}
           </span>
         </div>
       </button>
@@ -102,9 +105,8 @@ export function CourseFriendsSubscribed({ courseId }: CourseFriendsSubscribedPro
               ) : (
                 <div className="space-y-2">
                   {friends.map((friend) => {
-                    const emailDisplay = friend.email
-                      ? friend.email.replace("@ucsc.edu", "")
-                      : "";
+                    const username = friend.username ? `@${friend.username}` : null;
+                    const displayName = friend.name || `User ${friend.id.substring(0, 8)}`;
 
                     return (
                       <Link
@@ -115,11 +117,17 @@ export function CourseFriendsSubscribed({ courseId }: CourseFriendsSubscribedPro
                       >
                         <div className="flex items-center justify-between py-3 px-3 rounded-lg border border-blue-200 hover:bg-blue-50 hover:border-blue-300 transition-colors cursor-pointer bg-white">
                           <div className="flex-1">
-                            <div className="font-medium text-blue-900">{friend.name}</div>
-                            {emailDisplay && (
-                              <div className="text-xs text-blue-600 mt-0.5">
-                                {emailDisplay}@ucsc.edu
-                              </div>
+                            {username ? (
+                              <>
+                                <div className="font-medium text-blue-900">{username}</div>
+                                {friend.name && (
+                                  <div className="text-xs text-blue-600 mt-0.5">
+                                    {friend.name}
+                                  </div>
+                                )}
+                              </>
+                            ) : (
+                              <div className="font-medium text-blue-900">{displayName}</div>
                             )}
                           </div>
                         </div>

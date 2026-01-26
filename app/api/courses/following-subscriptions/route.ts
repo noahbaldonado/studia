@@ -65,15 +65,12 @@ export async function GET(request: NextRequest) {
 
     const profileMap = new Map(
       (profiles || []).map((p) => {
-        const metadata = p.metadata as { name?: string; email?: string; [key: string]: unknown };
-        const displayName = p.username
-          ? formatUsername(p.username)
-          : metadata?.name || `User ${p.id.substring(0, 8)}`;
+        const metadata = p.metadata as { name?: string; [key: string]: unknown };
         return [
           p.id,
           {
-            name: displayName,
-            email: metadata?.email || null,
+            username: p.username || null,
+            name: metadata?.name || null,
           },
         ];
       })
@@ -82,7 +79,7 @@ export async function GET(request: NextRequest) {
     // Build response with user details
     const courseFollowingWithDetails: Record<
       string,
-      Array<{ id: string; name: string; email: string | null }>
+      Array<{ id: string; username: string | null; name: string | null }>
     > = {};
 
     Object.entries(courseFollowing).forEach(([courseId, userIds]) => {
@@ -90,8 +87,8 @@ export async function GET(request: NextRequest) {
         const profile = profileMap.get(userId);
         return {
           id: userId,
-          name: profile?.name || `User ${userId.substring(0, 8)}`,
-          email: profile?.email || null,
+          username: profile?.username || null,
+          name: profile?.name || null,
         };
       });
     });

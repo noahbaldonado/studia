@@ -26,7 +26,10 @@ export function CourseFeedClient({ courseId }: CourseFeedClientProps) {
           showCourseFilter={false} // Don't show course filter since it's fixed
         />
       </div>
-      <CardFeed courseFilter={[courseId]} sortMode={sortMode} />
+      <CardFeed 
+        courseFilter={[courseId]} 
+        sortMode={sortMode}
+      />
     </>
   );
 }

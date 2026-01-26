@@ -12,6 +12,8 @@ interface Course {
   id: string;
   name: string;
   subject: string;
+  professor?: string | null;
+  quarter?: string | null;
   course_link?: string;
   isSubscribed?: boolean;
   followingSubscribers?: FollowingUser[];

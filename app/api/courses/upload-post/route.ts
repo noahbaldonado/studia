@@ -43,10 +43,10 @@ export async function POST(request: NextRequest) {
     // Check if user is subscribed to the course
     const { data: subscription, error: subError } = await supabase
       .from("course_subscription")
-      .select("id")
+      .select("course_id")
       .eq("user_id", user.id)
       .eq("course_id", courseId)
-      .single();
+      .maybeSingle();
 
     if (subError || !subscription) {
       return NextResponse.json(

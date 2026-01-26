@@ -4,34 +4,77 @@ import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { Button } from "@/components/ui/button";
 
+interface OtherSubscription {
+  id: string;
+  professor: string | null;
+  quarter: string | null;
+}
+
 interface SubscribeButtonProps {
   courseId: string;
   userId: string;
+  courseName: string;
 }
 
-export function SubscribeButton({ courseId, userId }: SubscribeButtonProps) {
+export function SubscribeButton({ courseId, userId, courseName }: SubscribeButtonProps) {
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [notification, setNotification] = useState<{ message: string; type: 'error' } | null>(null);
+  const [otherSubscriptions, setOtherSubscriptions] = useState<OtherSubscription[]>([]);
   const supabase = createClient();
 
-  // Check if user is subscribed
+  // Check subscription status and fetch other subscriptions
   useEffect(() => {
-    async function checkSubscription() {
+    async function checkSubscriptionAndFetchOthers() {
       try {
-        const { data, error } = await supabase
+        setLoading(true);
+        
+        // Check if subscribed to current course
+        const { data: currentSubscription, error: currentError } = await supabase
           .from("course_subscription")
           .select("course_id")
           .eq("user_id", userId)
           .eq("course_id", courseId)
-          .single();
+          .maybeSingle();
 
-        if (error && error.code !== "PGRST116") {
-          // PGRST116 is "no rows returned" which is fine
-          console.error("Error checking subscription:", error);
+        if (currentError) {
+          console.error("Error checking subscription:", currentError);
         } else {
-          setIsSubscribed(!!data);
+          setIsSubscribed(!!currentSubscription);
+        }
+
+        // Get all subscriptions for this course name
+        const { data: allSubscriptions } = await supabase
+          .from("course_subscription")
+          .select("course_id")
+          .eq("user_id", userId);
+
+        if (allSubscriptions && allSubscriptions.length > 0) {
+          const subscribedCourseIds = allSubscriptions.map(s => s.course_id);
+          
+          // Get all courses with same name that user is subscribed to
+          const { data: subscribedCourses } = await supabase
+            .from("course")
+            .select("id, professor, quarter")
+            .in("id", subscribedCourseIds)
+            .eq("name", courseName);
+
+          if (subscribedCourses) {
+            // Filter out the current course
+            const others = subscribedCourses
+              .filter(c => c.id !== courseId)
+              .map(c => ({
+                id: c.id,
+                professor: c.professor,
+                quarter: c.quarter,
+              }));
+            setOtherSubscriptions(others);
+          } else {
+            setOtherSubscriptions([]);
+          }
+        } else {
+          setOtherSubscriptions([]);
         }
       } catch (err) {
         console.error("Error checking subscription:", err);
@@ -40,16 +83,55 @@ export function SubscribeButton({ courseId, userId }: SubscribeButtonProps) {
       }
     }
 
-    if (userId && courseId) {
-      checkSubscription();
+    if (userId && courseId && courseName) {
+      checkSubscriptionAndFetchOthers();
     }
-  }, [userId, courseId, supabase]);
+  }, [userId, courseId, courseName, supabase]);
+
 
   const handleToggle = async () => {
     setUpdating(true);
     try {
-      if (isSubscribed) {
-        // Unsubscribe
+      if (!isSubscribed) {
+        // Subscribe to current course
+        const { error } = await supabase
+          .from("course_subscription")
+          .insert([{ user_id: userId, course_id: courseId }]);
+
+        if (error) {
+          console.error("Error subscribing:", error);
+          setNotification({ message: "Failed to subscribe. Please try again.", type: "error" });
+          setTimeout(() => setNotification(null), 3000);
+        } else {
+          setIsSubscribed(true);
+          // Refresh other subscriptions
+          const { data: allSubscriptions } = await supabase
+            .from("course_subscription")
+            .select("course_id")
+            .eq("user_id", userId);
+
+          if (allSubscriptions && allSubscriptions.length > 0) {
+            const subscribedCourseIds = allSubscriptions.map(s => s.course_id);
+            const { data: subscribedCourses } = await supabase
+              .from("course")
+              .select("id, professor, quarter")
+              .in("id", subscribedCourseIds)
+              .eq("name", courseName);
+
+            if (subscribedCourses) {
+              const others = subscribedCourses
+                .filter(c => c.id !== courseId)
+                .map(c => ({
+                  id: c.id,
+                  professor: c.professor,
+                  quarter: c.quarter,
+                }));
+              setOtherSubscriptions(others);
+            }
+          }
+        }
+      } else {
+        // Unsubscribe from current course
         const { error } = await supabase
           .from("course_subscription")
           .delete()
@@ -62,19 +144,35 @@ export function SubscribeButton({ courseId, userId }: SubscribeButtonProps) {
           setTimeout(() => setNotification(null), 3000);
         } else {
           setIsSubscribed(false);
-        }
-      } else {
-        // Subscribe
-        const { error } = await supabase
-          .from("course_subscription")
-          .insert([{ user_id: userId, course_id: courseId }]);
+          // Refresh other subscriptions
+          const { data: allSubscriptions } = await supabase
+            .from("course_subscription")
+            .select("course_id")
+            .eq("user_id", userId);
 
-        if (error) {
-          console.error("Error subscribing:", error);
-          setNotification({ message: "Failed to subscribe. Please try again.", type: "error" });
-          setTimeout(() => setNotification(null), 3000);
-        } else {
-          setIsSubscribed(true);
+          if (allSubscriptions && allSubscriptions.length > 0) {
+            const subscribedCourseIds = allSubscriptions.map(s => s.course_id);
+            const { data: subscribedCourses } = await supabase
+              .from("course")
+              .select("id, professor, quarter")
+              .in("id", subscribedCourseIds)
+              .eq("name", courseName);
+
+            if (subscribedCourses) {
+              const others = subscribedCourses
+                .filter(c => c.id !== courseId)
+                .map(c => ({
+                  id: c.id,
+                  professor: c.professor,
+                  quarter: c.quarter,
+                }));
+              setOtherSubscriptions(others);
+            } else {
+              setOtherSubscriptions([]);
+            }
+          } else {
+            setOtherSubscriptions([]);
+          }
         }
       }
     } catch (err) {
@@ -86,6 +184,28 @@ export function SubscribeButton({ courseId, userId }: SubscribeButtonProps) {
     }
   };
 
+  // Format "Also subscribed to..." message
+  const getOtherSubscriptionsMessage = () => {
+    if (otherSubscriptions.length === 0) return null;
+
+    const prefix = isSubscribed ? "Also subscribed to" : "Subscribed to";
+
+    if (otherSubscriptions.length === 1) {
+      const sub = otherSubscriptions[0];
+      const parts: string[] = [];
+      if (sub.quarter) parts.push(sub.quarter);
+      if (sub.professor) parts.push(`Professor ${sub.professor}`);
+      return `${prefix} ${parts.join(", ")}`;
+    } else {
+      const sub = otherSubscriptions[0];
+      const parts: string[] = [];
+      if (sub.quarter) parts.push(sub.quarter);
+      if (sub.professor) parts.push(`Professor ${sub.professor}`);
+      const othersCount = otherSubscriptions.length - 1;
+      return `${prefix} ${parts.join(", ")} and ${othersCount} other${othersCount !== 1 ? 's' : ''}`;
+    }
+  };
+
   if (loading) {
     return (
       <Button disabled className="w-full rounded-full h-14 px-2">
@@ -94,8 +214,11 @@ export function SubscribeButton({ courseId, userId }: SubscribeButtonProps) {
     );
   }
 
+  const otherSubscriptionsMessage = getOtherSubscriptionsMessage();
+
   return (
-    <div>
+    <div className="space-y-3">
+      {/* Subscribe/Unsubscribe Button */}
       <Button
         onClick={handleToggle}
         disabled={updating}
@@ -108,6 +231,14 @@ export function SubscribeButton({ courseId, userId }: SubscribeButtonProps) {
           ? "Unsubscribe"
           : "Subscribe"}
       </Button>
+      
+      {/* Other subscriptions note */}
+      {otherSubscriptionsMessage && (
+        <p className="text-xs text-[hsl(var(--muted-foreground))] text-center">
+          {otherSubscriptionsMessage}
+        </p>
+      )}
+      
       {notification && (
         <div className="mt-2 px-4 py-3 rounded-lg text-sm bg-red-50 text-red-800 border border-red-300">
           {notification.message}
