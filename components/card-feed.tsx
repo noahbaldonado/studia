@@ -106,6 +106,7 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
   const [pollVotes, setPollVotes] = useState<Record<string, { voteCounts: number[]; totalVotes: number; userVote: number | null; showingResults: boolean }>>({});
   const [updatingPolls, setUpdatingPolls] = useState<Set<string>>(new Set());
   const [currentUser, setCurrentUser] = useState<{ id: string } | null>(null);
+  const [hasSubscriptions, setHasSubscriptions] = useState<boolean | null>(null);
   
   // View time tracking
   const cardRefs = useRef<Map<string, HTMLDivElement>>(new Map());
@@ -138,6 +139,8 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
       if (courseFilter) {
         // Handle both array and single string (for backward compatibility)
         subscribedCourseIds = Array.isArray(courseFilter) ? courseFilter : [courseFilter];
+        // If filtering by specific courses, assume user has subscriptions
+        setHasSubscriptions(true);
       } else {
         // Get user's subscribed courses
         const { data: subscriptions } = await supabase
@@ -145,6 +148,7 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
           .select("course_id")
           .eq("user_id", user.id);
         subscribedCourseIds = subscriptions?.map((s) => s.course_id) || [];
+        setHasSubscriptions(subscribedCourseIds.length > 0);
       }
 
       if (subscribedCourseIds.length === 0) {
@@ -1155,7 +1159,21 @@ export function CardFeed({ courseFilter = null, sortMode = "algorithm" }: CardFe
     return (
       <div className="flex flex-col items-center justify-center h-96 gap-4">
         <div className="text-lg font-semibold">No cards available</div>
-        <Button onClick={loadCards}>Reload</Button>
+        {hasSubscriptions === false ? (
+          <Link href="/protected/courses">
+            <Button className="bg-[hsl(var(--primary))] hover:opacity-90">
+              Add a course
+            </Button>
+          </Link>
+        ) : hasSubscriptions === true ? (
+          <Link href="/protected/courses">
+            <Button className="bg-[hsl(var(--primary))] hover:opacity-90">
+              Add another course
+            </Button>
+          </Link>
+        ) : (
+          <Button onClick={loadCards}>Reload</Button>
+        )}
       </div>
     );
   }
