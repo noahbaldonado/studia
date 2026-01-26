@@ -52,8 +52,8 @@ The app uses Google OAuth for authentication, so make sure your Supabase project
 The sql/ directory contains consolidated migration files that set up the database schema. Run them in this exact order:
 
 1. **`01_base_tables.sql`** - **Run this FIRST!**
-   - Creates all core tables: `profile`, `course`, `course_subscription`, `course_pdfs`, `quiz`, `tag`, `quiz_tag`
-   - Includes username, profile picture, and all necessary columns
+   - Creates all core tables: `profile`, `course`, `course_subscription`, `quiz`, `tag`, `quiz_tag`
+   - Includes username, profile picture, syllabus URL, and all necessary columns
 
 2. **`02_functions.sql`** - Run after base tables
    - Creates database functions for recommendation algorithm and interaction tracking
@@ -62,8 +62,10 @@ The sql/ directory contains consolidated migration files that set up the databas
    - Creates comment, interaction, follow, and poll tables
 
 4. **`04_storage_policies.sql`** - Run after creating storage buckets
-   - Sets up RLS policies for PDF and profile picture storage
-   - **Note**: Create `course-pdfs` and `profile-pictures` buckets in Supabase Dashboard → Storage first
+   - Sets up RLS policies for profile picture and syllabus storage
+   - **Note**: Create `profile-pictures` and `course-syllabi` buckets in Supabase Dashboard → Storage first
+   - `profile-pictures`: Public bucket for user profile pictures
+   - `course-syllabi`: Public bucket for course syllabus PDFs (5MB file size limit recommended)
 
 5. **`05_seed_sample_courses.sql`** - **Optional** - Adds 10 sample courses for testing
 
@@ -100,6 +102,11 @@ The app is configured for Vercel deployment. Make sure all environment variables
 - **Manual Content Creation**: Create quizzes, flashcards, sticky notes, and polls manually
 - **Feed System**: Algorithm-based or chronological feed of posts with sorting and filtering
 - **Courses**: Subscribe to courses and organize your study materials
+- **Course Syllabi**: Upload and manage course syllabi with collaborative approval system
+  - Upload a syllabus for any course (requires subscription)
+  - Replace existing syllabi through a voting system
+  - Dynamic approval/rejection thresholds based on class size
+  - AI-generated change summaries when syllabi are updated
 - **Social Features**: Follow other users, comment on posts, like/dislike content
 - **Messaging**: 1-on-1 direct messaging between users
 - **Search**: Search for users by username or name
@@ -115,6 +122,7 @@ The app is configured for Vercel deployment. Make sure all environment variables
 - **Sticky Notes**: Quick reminders and notes
 - **Polls**: Opinion-based polls with voting and result tracking
 - **Open Questions**: Free-form questions for discussion
+- **Syllabus Replacements**: Proposals to replace course syllabi with voting and approval system
 
 ### Algorithm Features
 - Personalized feed based on tag scores, user ratings, recency, and interaction history
