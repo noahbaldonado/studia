@@ -26,8 +26,8 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Normalize username (remove @ if present)
-    const username = normalizeUsername(rawUsername.trim().toLowerCase());
+    // Normalize username (remove @ if present, preserve case)
+    const username = normalizeUsername(rawUsername.trim());
 
     // Validate username format
     const validation = validateUsername(username);
@@ -38,13 +38,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if username is already taken (by another user)
-    const { data: existingProfile, error: checkError } = await supabase
+    // Check if username is already taken (by another user) - case-insensitive
+    // The unique index on LOWER(username) enforces case-insensitive uniqueness
+    // We check using ilike for case-insensitive matching
+    const { data: existingProfiles, error: checkError } = await supabase
       .from("profile")
-      .select("id")
-      .eq("username", username)
-      .maybeSingle();
-
+      .select("id, username")
+      .ilike("username", username)
+      .limit(1);
+    
     if (checkError) {
       console.error("Error checking username:", checkError);
       return NextResponse.json(
@@ -52,6 +54,8 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
+
+    const existingProfile = existingProfiles?.[0];
 
     if (existingProfile && existingProfile.id !== user.id) {
       return NextResponse.json(

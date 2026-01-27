@@ -60,6 +60,10 @@ These scripts should be run in your Supabase database. You can execute them via:
    - Adds RLS policy to allow authenticated users to update `likes` and `dislikes` on any quiz
    - Required for like/dislike functionality to work
 
+9. **`11_allow_uppercase_usernames.sql`** - **Run AFTER base tables**
+   - Updates username constraint to allow uppercase letters (A-Z)
+   - Usernames remain case-insensitive for uniqueness (via LOWER index)
+
 ### Optional Migrations
 
 6. **`05_seed_sample_courses.sql`** - **Optional seed script**
