@@ -52,6 +52,14 @@ These scripts should be run in your Supabase database. You can execute them via:
    - Adds `generated_from_pdf` boolean column to `quiz` table
    - Drops `course_pdfs` table (PDFs are no longer stored permanently)
 
+7. **`09_add_professor_quarter.sql`** - **Run AFTER base tables**
+   - Adds `professor` and `quarter` columns to `course` table
+   - Adds indexes for efficient lookups by professor and quarter
+
+8. **`10_allow_likes_dislikes_updates.sql`** - **Run AFTER base tables**
+   - Adds RLS policy to allow authenticated users to update `likes` and `dislikes` on any quiz
+   - Required for like/dislike functionality to work
+
 ### Optional Migrations
 
 6. **`05_seed_sample_courses.sql`** - **Optional seed script**
